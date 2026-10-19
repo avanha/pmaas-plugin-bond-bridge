@@ -21,7 +21,10 @@
                 <i class="bi bi-arrow-repeat"></i> {{.Fan.Direction.String | html}}
             </button>
         </div>
-        <div class="note">The bridge only knows what it sent: a change made with the remote isn't seen.</div>
+        <div class="note">The bridge only knows what it sent: a change made with the remote isn't seen. If it's wrong, tell it (nothing is sent to the fan):
+            <button type="button" class="cmd" data-op="sync" data-value="0">The fan is off</button>
+            {{range .Fan.Speeds}}<button type="button" class="cmd" data-op="sync" data-value="{{.}}">Speed {{.}}</button>{{end}}
+        </div>
     </div>
     {{end}}
 
@@ -33,6 +36,10 @@
         </div>
         <div class="buttons">
             <button type="button" class="cmd" data-op="power" data-value="{{if .Light.On}}0{{else}}1{{end}}">{{if .Light.On}}Turn off{{else}}Turn on{{end}}</button>
+        </div>
+        <div class="note">If the state is wrong, tell the bridge (nothing is sent to the light):
+            <button type="button" class="cmd" data-op="sync" data-value="0">It's really off</button>
+            <button type="button" class="cmd" data-op="sync" data-value="1">It's really on</button>
         </div>
         {{if .Light.Dimmable}}
         <div class="dim">

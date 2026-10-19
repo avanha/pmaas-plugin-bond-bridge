@@ -209,6 +209,27 @@ func (p *plugin) send(dev *bondDevice, action string, argument *int) error {
 	return nil
 }
 
+// correct tells the bridge what the state of the device really is, then reads back what it believes.
+func (p *plugin) correct(dev *bondDevice, state map[string]int) error {
+	accepted := p.exec.submit(func(ctx context.Context) {
+		err := p.api.Correct(ctx, dev.info.ID, state)
+		if err != nil {
+			p.later(func() { p.onSendFailed(dev, "correct the state", err) })
+
+			return
+		}
+
+		read, err := p.api.State(ctx, dev.info.ID)
+		p.later(func() { p.onState(dev.info.ID, read, err) })
+	})
+
+	if !accepted {
+		return errors.New("the bridge's queue is full or the plugin is stopping")
+	}
+
+	return nil
+}
+
 func (p *plugin) onSendFailed(dev *bondDevice, action string, err error) {
 	p.log.Error("the bridge refused a command", "device", dev.info.Name, "action", action, "error", err)
 	dev.setReachable(false)

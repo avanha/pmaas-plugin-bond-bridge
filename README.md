@@ -26,6 +26,9 @@ button can turn them on and off like any other (`automations.Flip(livingRoomLigh
 * **State is assumed.** A ceiling fan on RF can't report back: the bridge knows only what it last sent. Changes made with the
   fan's own remote are never seen, here or in the Bond app. The page and `Assumed` in the data say so. The plugin asks for the
   bridge's state every `PollEvery` (30 seconds), and right after each command it sends.
+* **Correcting the bridge.** When what it believes is wrong, the page can tell it the truth ("It's really off", "The fan is off", "Speed 2"): a `PATCH` of the
+  bridge's state, which transmits nothing. This matters for a light that is switched by a toggle: a command to turn it on is not sent if the
+  bridge believes it is on already.
 * **Offline.** If the bridge doesn't answer, the devices are offline (their last state is kept) and commands are refused with
   an error. Finding the devices is tried again every 30 seconds until the bridge answers.
 * **Calls are made one at a time**, off the plugin's goroutine, because the bridge is a small device.

@@ -95,6 +95,24 @@ func TestClient_ActionsAreSentWithTheirArgumentOnlyIfTheyHaveOne(t *testing.T) {
 	}
 }
 
+func TestClient_CorrectingTheBeliefPatchesTheStateWithoutAnAction(t *testing.T) {
+	var method, path, body string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		method, path, body = r.Method, r.URL.Path, string(raw)
+	}))
+	defer server.Close()
+
+	if err := NewClient(server.URL, "secret", time.Second).Correct(context.Background(), "05dd38b9", map[string]int{"down_light": 0}); err != nil {
+		t.Fatal(err)
+	}
+
+	if method != http.MethodPatch || path != "/v2/devices/05dd38b9/state" || body != `{"down_light":0}` {
+		t.Errorf("%s %s %s", method, path, body)
+	}
+}
+
 func TestClient_AFailureSaysWhatTheBridgeAnswered(t *testing.T) {
 	server := fakeBridge(t, nil)
 	defer server.Close()

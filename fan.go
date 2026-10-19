@@ -137,6 +137,19 @@ func (f *fan) SetDirection(direction device.FanDirection) error {
 	return f.dev.p.send(f.dev, "SetDirection", &argument)
 }
 
+// Sync tells the bridge the fan is really off (speed 0), or on at the speed, when what it believes is wrong. Nothing is transmitted.
+func (f *fan) Sync(speed int) error {
+	if speed < 0 || speed > f.data.MaxSpeed {
+		return fmt.Errorf("unable to sync %q to speed %d (0 to %d): %w", f.data.Name, speed, f.data.MaxSpeed, device.ErrInvalidFanSpeed)
+	}
+
+	if speed == 0 {
+		return f.dev.p.correct(f.dev, map[string]int{"power": 0})
+	}
+
+	return f.dev.p.correct(f.dev, map[string]int{"power": 1, "speed": speed})
+}
+
 // apply takes the state the bridge reports. The first establishes the state without being a change.
 func (f *fan) apply(state bond.State) {
 	now := f.dev.p.now()

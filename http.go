@@ -202,6 +202,8 @@ func (p *plugin) command(request commandRequest) error {
 			return dev.fan.SetState(state)
 		case "speed":
 			return dev.fan.SetSpeed(request.Value)
+		case "sync":
+			return dev.fan.Sync(request.Value)
 		case "direction":
 			direction := device.FanDirectionForward
 			if request.Value < 0 {
@@ -222,6 +224,8 @@ func (p *plugin) command(request commandRequest) error {
 			return dev.light.SetBrightness(request.Value)
 		case "step":
 			return dev.light.StepBrightness(request.Value)
+		case "sync":
+			return dev.light.Sync(request.Value != 0)
 		case "calibrate":
 			return dev.light.Calibrate(request.Value)
 		}

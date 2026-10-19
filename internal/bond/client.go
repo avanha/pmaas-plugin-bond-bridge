@@ -24,6 +24,10 @@ type API interface {
 
 	// Do sends an action, with its argument if it takes one.
 	Do(ctx context.Context, id string, action string, argument *int) error
+
+	// Correct changes what the bridge believes the state of a device is, by state variable ("down_light": 0), without the bridge
+	// transmitting anything. It is for when the belief is wrong: the bridge only knows what it has sent.
+	Correct(ctx context.Context, id string, state map[string]int) error
 }
 
 // Device is a thing the bridge controls.
@@ -189,6 +193,10 @@ func (c *Client) State(ctx context.Context, id string) (State, error) {
 	err := c.do(ctx, http.MethodGet, "/v2/devices/"+url.PathEscape(id)+"/state", nil, &state)
 
 	return state, err
+}
+
+func (c *Client) Correct(ctx context.Context, id string, state map[string]int) error {
+	return c.do(ctx, http.MethodPatch, "/v2/devices/"+url.PathEscape(id)+"/state", state, nil)
 }
 
 func (c *Client) Do(ctx context.Context, id string, action string, argument *int) error {

@@ -112,6 +112,42 @@ func (b *fakeBridge) Do(_ context.Context, id string, action string, argument *i
 	return nil
 }
 
+func (b *fakeBridge) Correct(_ context.Context, id string, patch map[string]int) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if b.down {
+		return errors.New("no route to host")
+	}
+
+	text := id + " correct"
+	for _, key := range []string{"power", "speed", "light", "down_light"} {
+		if v, ok := patch[key]; ok {
+			text += fmt.Sprintf(" %s=%d", key, v)
+		}
+	}
+
+	b.actions = append(b.actions, text)
+
+	s := b.state[id]
+
+	if v, ok := patch["down_light"]; ok {
+		s.DownLight = ptr(v)
+	}
+
+	if v, ok := patch["power"]; ok {
+		s.Power = ptr(v)
+	}
+
+	if v, ok := patch["speed"]; ok {
+		s.Speed = ptr(v)
+	}
+
+	b.state[id] = s
+
+	return nil
+}
+
 func (b *fakeBridge) done() []string {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -983,5 +1019,50 @@ func TestTemplate_RendersAFanAndADimmableLight(t *testing.T) {
 
 	if strings.Contains(render(view), "<script>x") {
 		t.Error("a name was printed unescaped")
+	}
+}
+
+func TestSync_TellsTheBridgeWhatTheStateReallyIsWithoutSendingACommandToTheDevice(t *testing.T) {
+	f := newFixture(t, nil)
+	f.ready()
+
+	// The bridge believes the living room light is on; it is really off.
+	if f.dev("fan1").light.data.State != device.SwitchStateOn {
+		t.Fatal("the bridge doesn't believe it is on")
+	}
+
+	var err error
+	f.onPlugin(func() { err = f.plugin.command(commandRequest{Device: "fan1", Target: "light", Op: "sync", Value: 0}) })
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got := f.waitActions(1); got[0] != "fan1 correct down_light=0" {
+		t.Errorf("%v", got)
+	}
+
+	f.eventually("the light off", func() bool { return f.plugin.byID["fan1"].light.data.State == device.SwitchStateOff })
+
+	// And the fan: it is really running at speed 2.
+	f.onPlugin(func() { err = f.plugin.command(commandRequest{Device: "fan1", Target: "fan", Op: "sync", Value: 2}) })
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got := f.waitActions(2); got[1] != "fan1 correct power=1 speed=2" {
+		t.Errorf("%v", got)
+	}
+
+	f.eventually("the fan on", func() bool {
+		d := f.plugin.byID["fan1"].fan.data
+		return d.State == device.SwitchStateOn && d.Speed == 2
+	})
+
+	f.onPlugin(func() { err = f.plugin.command(commandRequest{Device: "fan1", Target: "fan", Op: "sync", Value: 9}) })
+
+	if err == nil {
+		t.Error("a speed the fan doesn't have")
 	}
 }

@@ -21,6 +21,7 @@ const stopTries = 3
 
 // lightActions is how one of a device's lights is controlled.
 type lightActions struct {
+	key     string // the state variable that says whether it is on
 	on, off string
 	dim     string // starts the dimmer, which sweeps up and down until stopped; empty if it can't be dimmed
 	stop    string
@@ -29,9 +30,9 @@ type lightActions struct {
 
 // chooseLight is the light of the device to use, if it has one.
 func chooseLight(info bond.Device, choice LightChoice) (lightActions, bool) {
-	down := lightActions{"TurnDownLightOn", "TurnDownLightOff", "StartDownLightDimmer", "Stop", func(s bond.State) *int { return s.DownLight }}
-	up := lightActions{"TurnUpLightOn", "TurnUpLightOff", "StartUpLightDimmer", "Stop", func(s bond.State) *int { return s.UpLight }}
-	plain := lightActions{"TurnLightOn", "TurnLightOff", "StartDimmer", "Stop", func(s bond.State) *int { return s.Light }}
+	down := lightActions{"down_light", "TurnDownLightOn", "TurnDownLightOff", "StartDownLightDimmer", "Stop", func(s bond.State) *int { return s.DownLight }}
+	up := lightActions{"up_light", "TurnUpLightOn", "TurnUpLightOff", "StartUpLightDimmer", "Stop", func(s bond.State) *int { return s.UpLight }}
+	plain := lightActions{"light", "TurnLightOn", "TurnLightOff", "StartDimmer", "Stop", func(s bond.State) *int { return s.Light }}
 
 	has := func(l lightActions) bool { return info.Has(l.on) && info.Has(l.off) }
 
@@ -187,6 +188,17 @@ func (l *light) StepBrightness(percent int) error {
 	}
 
 	return l.request(func() []dimmer.Move { return l.model.PlanStep(percent) })
+}
+
+// Sync tells the bridge the light is really on or off, when what it believes is wrong. Nothing is transmitted to the light. A fan
+// whose light is switched by a toggle can't be turned on by a command the bridge thinks it needn't send.
+func (l *light) Sync(on bool) error {
+	value := 0
+	if on {
+		value = 1
+	}
+
+	return l.dev.p.correct(l.dev, map[string]int{l.acts.key: value})
 }
 
 // Calibrate says where the dimmer is, once someone has seen: at its dimmest (level 1, and the next hold goes up) or its brightest
