@@ -4,17 +4,16 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"github.com/avanha/pmaas-plugin-bond-bridge/data"
+	"github.com/avanha/pmaas-plugin-bond-bridge/internal/common"
+	spi "github.com/avanha/pmaas-spi"
+	"github.com/avanha/pmaas-spi/format"
+	"github.com/avanha/pmaas-spi/logging"
 	"io"
 	"log/slog"
 	"net/http"
 	"reflect"
 	"text/template"
-	"time"
-
-	"github.com/avanha/pmaas-plugin-bond-bridge/data"
-	"github.com/avanha/pmaas-plugin-bond-bridge/internal/common"
-	spi "github.com/avanha/pmaas-spi"
-	"github.com/avanha/pmaas-spi/logging"
 )
 
 //go:embed content/static content/templates
@@ -24,7 +23,7 @@ var contentFS embed.FS
 // string a template prints has to go through the html function itself.
 var deviceTemplate = spi.TemplateInfo{
 	Name:    "bondbridge_device",
-	FuncMap: template.FuncMap{"RelativeTime": relativeTime},
+	FuncMap: template.FuncMap{"RelativeTime": format.Ago},
 	Paths:   []string{"templates/bondbridge_device.htmlt"},
 	Styles:  []string{"css/bondbridge.css"},
 	Scripts: []string{"js/bondbridge.js"},
@@ -121,24 +120,4 @@ func (h *Handler) deviceRendererFactory() (spi.EntityRenderer, error) {
 	}
 
 	return spi.EntityRenderer{StreamingRenderFunc: render, Styles: compiled.Styles, Scripts: compiled.Scripts}, nil
-}
-
-// relativeTime says how long ago a time was, in its two most significant units: "5m ago", "2h 5m ago".
-func relativeTime(t time.Time) string {
-	if t.IsZero() {
-		return "never"
-	}
-
-	elapsed := time.Since(t).Truncate(time.Minute)
-
-	switch {
-	case elapsed < time.Minute:
-		return "just now"
-	case elapsed < time.Hour:
-		return fmt.Sprintf("%dm ago", int(elapsed.Minutes()))
-	case elapsed < 24*time.Hour:
-		return fmt.Sprintf("%dh %dm ago", int(elapsed.Hours()), int(elapsed.Minutes())%60)
-	default:
-		return fmt.Sprintf("%dd %dh ago", int(elapsed.Hours())/24, int(elapsed.Hours())%24)
-	}
 }

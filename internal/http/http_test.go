@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 	"text/template"
-	"time"
 
 	"github.com/avanha/pmaas-plugin-bond-bridge/data"
 	"github.com/avanha/pmaas-plugin-bond-bridge/internal/common"
@@ -89,12 +88,6 @@ func TestTemplate_AFanOnlyDeviceHasNoLightControls(t *testing.T) {
 	page := renderDevice(t, view)
 	if strings.Contains(page, `data-target="light"`) || !strings.Contains(page, `data-target="fan"`) {
 		t.Errorf("%s", page)
-	}
-}
-
-func TestRelativeTime(t *testing.T) {
-	if relativeTime(time.Time{}) != "never" {
-		t.Error("a time that never was")
 	}
 }
 
