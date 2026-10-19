@@ -1,0 +1,16 @@
+.entity-bond-device { display: flex; flex-flow: column; gap: 6px; }
+.entity-bond-device .title-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.entity-bond-device .name { font-weight: bold; overflow-wrap: anywhere; }
+.entity-bond-device .location { opacity: 0.7; font-size: 0.9em; }
+.entity-bond-device .offline-icon { color: #d9534f; }
+.entity-bond-device.offline .part { opacity: 0.55; }
+.entity-bond-device .part { display: flex; flex-flow: column; gap: 4px; padding-top: 4px; border-top: 1px solid rgba(128, 128, 128, 0.3); }
+.entity-bond-device .part-title { font-weight: 600; display: flex; gap: 8px; align-items: baseline; }
+.entity-bond-device .state.on { color: #2e9d4f; }
+.entity-bond-device .state.off { opacity: 0.7; }
+.entity-bond-device .busy { opacity: 0.8; font-weight: normal; font-style: italic; }
+.entity-bond-device .buttons { display: flex; flex-flow: row wrap; gap: 4px; }
+.entity-bond-device button.cmd { padding: 2px 10px; cursor: pointer; }
+.entity-bond-device button.cmd.current { font-weight: bold; outline: 2px solid #2e9d4f; }
+.entity-bond-device .note, .entity-bond-device .estimate { font-size: 0.8em; opacity: 0.7; }
+.entity-bond-device .error { color: #d9534f; font-size: 0.9em; }

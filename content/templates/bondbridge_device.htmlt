@@ -1,0 +1,64 @@
+<div class="entity-bond-device{{if .Offline}} offline{{end}}" data-device="{{.ID | html}}">
+    <div class="title-row">
+        <div class="name">{{.Name | html}}</div>
+        {{if .Offline}}<i class="bi bi-wifi-off offline-icon" title="The bridge isn't answering for this device"></i>{{end}}
+    </div>
+    {{if .Location}}<div class="location">{{.Location | html}}</div>{{end}}
+
+    {{if .Fan}}
+    <div class="part fan" data-target="fan">
+        <div class="part-title">Fan
+            <span class="state {{if .Fan.On}}on{{else}}off{{end}}">{{if .Fan.HasData}}{{if .Fan.On}}On{{else}}Off{{end}}{{else}}Waiting for data{{end}}</span>
+        </div>
+        <div class="buttons">
+            <button type="button" class="cmd" data-op="power" data-value="{{if .Fan.On}}0{{else}}1{{end}}">{{if .Fan.On}}Turn off{{else}}Turn on{{end}}</button>
+            {{$speed := .Fan.Speed}}{{$on := .Fan.On}}
+            {{range .Fan.Speeds}}
+            <button type="button" class="cmd speed{{if and $on (eq $speed .)}} current{{end}}" data-op="speed" data-value="{{.}}" title="Speed {{.}}">{{.}}</button>
+            {{end}}
+            <button type="button" class="cmd" data-op="direction" data-value="{{if eq .Fan.Direction.String "Reverse"}}1{{else}}-1{{end}}"
+                    title="Turns {{.Fan.Direction.String | html}}: press to change">
+                <i class="bi bi-arrow-repeat"></i> {{.Fan.Direction.String | html}}
+            </button>
+        </div>
+        <div class="note">The bridge only knows what it sent: a change made with the remote isn't seen.</div>
+    </div>
+    {{end}}
+
+    {{if .Light}}
+    <div class="part light" data-target="light">
+        <div class="part-title">Light
+            <span class="state {{if .Light.On}}on{{else}}off{{end}}">{{if .Light.HasData}}{{if .Light.On}}On{{else}}Off{{end}}{{else}}Waiting for data{{end}}</span>
+            {{if .Light.Busy}}<span class="busy">dimming…</span>{{end}}
+        </div>
+        <div class="buttons">
+            <button type="button" class="cmd" data-op="power" data-value="{{if .Light.On}}0{{else}}1{{end}}">{{if .Light.On}}Turn off{{else}}Turn on{{end}}</button>
+        </div>
+        {{if .Light.Dimmable}}
+        <div class="dim">
+            {{if .Light.HasBrightness}}
+            <div class="level">
+                About {{.Light.Brightness}}%
+                <span class="estimate" title="Worked out from how long the dimmer was run, so it drifts">(estimated)</span>
+            </div>
+            <div class="buttons">
+                <button type="button" class="cmd" data-op="step" data-value="-{{.Light.Step}}" title="Dimmer">&minus; {{.Light.Step}}%</button>
+                <button type="button" class="cmd" data-op="step" data-value="{{.Light.Step}}" title="Brighter">+ {{.Light.Step}}%</button>
+                {{range .Light.Presets}}
+                <button type="button" class="cmd preset" data-op="brightness" data-value="{{.}}">{{.}}%</button>
+                {{end}}
+            </div>
+            {{else}}
+            <div class="level">Brightness not known: the bridge can only start and stop the dimmer.</div>
+            {{end}}
+            <div class="note">Calibrate when the light is at an end, with the remote or the app:</div>
+            <div class="buttons">
+                <button type="button" class="cmd" data-op="calibrate" data-value="1">It's at its dimmest</button>
+                <button type="button" class="cmd" data-op="calibrate" data-value="100">It's at its brightest</button>
+            </div>
+        </div>
+        {{end}}
+    </div>
+    {{end}}
+    <div class="error"></div>
+</div>
