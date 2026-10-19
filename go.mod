@@ -2,4 +2,4 @@ module github.com/avanha/pmaas-plugin-bond-bridge
 
 go 1.27.1
 
-require github.com/avanha/pmaas-spi v0.0.18
+require github.com/avanha/pmaas-spi v0.0.19
