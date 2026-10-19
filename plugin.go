@@ -5,10 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sort"
 	"sync/atomic"
 	"time"
 
+	"github.com/avanha/pmaas-plugin-bond-bridge/data"
 	"github.com/avanha/pmaas-plugin-bond-bridge/internal/bond"
+	"github.com/avanha/pmaas-plugin-bond-bridge/internal/common"
+	"github.com/avanha/pmaas-plugin-bond-bridge/internal/http"
 	spi "github.com/avanha/pmaas-spi"
 	"github.com/avanha/pmaas-spi/device"
 	"github.com/avanha/pmaas-spi/environment"
@@ -30,7 +34,7 @@ type plugin struct {
 	container spi.IPMAASContainer
 	api       bond.API
 	exec      *executor
-	http      *httpHandler
+	http      *http.Handler
 
 	devices []*bondDevice
 	byID    map[string]*bondDevice
@@ -48,7 +52,7 @@ type plugin struct {
 var _ spi.IPMAASPlugin = (*plugin)(nil)
 
 func NewPlugin(config PluginConfig) Plugin {
-	return &plugin{config: config, byID: make(map[string]*bondDevice), now: time.Now, http: &httpHandler{}}
+	return &plugin{config: config, byID: make(map[string]*bondDevice), now: time.Now, http: http.NewHandler()}
 }
 
 func (p *plugin) ShortName() string {
@@ -64,7 +68,7 @@ func (p *plugin) Init(container spi.IPMAASContainer) {
 		return func() { timer.Stop() }
 	}
 
-	p.http.init(container, p)
+	p.http.Init(container, &entityStoreAdapter{parent: p})
 }
 
 func (p *plugin) Start() {
@@ -387,4 +391,93 @@ func bondSwitch(name string, hasData bool, state device.SwitchState, changed tim
 		Name: name, HasData: hasData, State: state, LastChangeTime: changed, LastUpdateTime: updated,
 		Connectivity: connectivity, OfflineSince: offlineSince, OnlineSince: onlineSince,
 	}
+}
+
+// getDevices is the devices with their fan and light, sorted by name. Runs on the plugin goroutine.
+func (p *plugin) getDevices() []data.DeviceView {
+	views := make([]data.DeviceView, 0, len(p.devices))
+
+	for _, dev := range p.devices {
+		view := data.DeviceView{ID: dev.info.ID, Name: dev.info.Name, Location: dev.info.Location, Offline: dev.heard && !dev.reachable}
+
+		if dev.fan != nil {
+			speeds := make([]int, dev.fan.data.MaxSpeed)
+			for i := range speeds {
+				speeds[i] = i + 1
+			}
+
+			view.Fan = &data.FanView{Fan: dev.fan.data, Speeds: speeds, On: dev.fan.data.State == device.SwitchStateOn}
+			view.OfflineSince = dev.fan.data.OfflineSince
+		}
+
+		if dev.light != nil {
+			view.Light = &data.LightView{Light: dev.light.data, On: dev.light.data.State == device.SwitchStateOn, Busy: dev.light.busy,
+				Step: 10, Presets: []int{10, 25, 50, 75, 100}}
+
+			if view.Fan == nil {
+				view.OfflineSince = dev.light.data.OfflineSince
+			}
+		}
+
+		views = append(views, view)
+	}
+
+	sort.Slice(views, func(i, j int) bool { return views[i].Name < views[j].Name })
+
+	return views
+}
+
+// command does what a button on the page asked. Runs on the plugin goroutine.
+func (p *plugin) command(request common.Command) error {
+	dev, ok := p.byID[request.Device]
+	if !ok {
+		return fmt.Errorf("there is no device %q", request.Device)
+	}
+
+	state := device.SwitchStateOff
+	if request.Value != 0 {
+		state = device.SwitchStateOn
+	}
+
+	switch request.Target {
+	case "fan":
+		if dev.fan == nil {
+			return errors.New("the device has no fan")
+		}
+
+		switch request.Op {
+		case "power":
+			return dev.fan.SetState(state)
+		case "speed":
+			return dev.fan.SetSpeed(request.Value)
+		case "sync":
+			return dev.fan.Sync(request.Value)
+		case "direction":
+			direction := device.FanDirectionForward
+			if request.Value < 0 {
+				direction = device.FanDirectionReverse
+			}
+
+			return dev.fan.SetDirection(direction)
+		}
+	case "light":
+		if dev.light == nil {
+			return errors.New("the device has no light")
+		}
+
+		switch request.Op {
+		case "power":
+			return dev.light.SetState(state)
+		case "brightness":
+			return dev.light.SetBrightness(request.Value)
+		case "step":
+			return dev.light.StepBrightness(request.Value)
+		case "sync":
+			return dev.light.Sync(request.Value != 0)
+		case "calibrate":
+			return dev.light.Calibrate(request.Value)
+		}
+	}
+
+	return fmt.Errorf("there is no %s %q", request.Target, request.Op)
 }

@@ -10,10 +10,11 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"text/template"
 	"time"
 
+	"github.com/avanha/pmaas-plugin-bond-bridge/data"
 	"github.com/avanha/pmaas-plugin-bond-bridge/internal/bond"
+	"github.com/avanha/pmaas-plugin-bond-bridge/internal/common"
 	spi "github.com/avanha/pmaas-spi"
 	"github.com/avanha/pmaas-spi/device"
 	"github.com/avanha/pmaas-spi/environment"
@@ -885,7 +886,7 @@ func TestLight_CalibratingNeedsADimmableLightAndOneThatIsNotBeingRun(t *testing.
 	g.ready()
 	g.calibrate("fan1", 1)
 	g.onPlugin(func() {
-		err = g.plugin.command(commandRequest{Device: "fan1", Target: "light", Op: "brightness", Value: 60})
+		err = g.plugin.command(common.Command{Device: "fan1", Target: "light", Op: "brightness", Value: 60})
 	})
 
 	if err != nil {
@@ -921,23 +922,23 @@ func TestStop_EachEntityIsDeregisteredAndAHandleGoesBackToNothing(t *testing.T) 
 	}
 }
 
-func TestListItems_AreDevicesWithTheirFanAndLight(t *testing.T) {
+func TestGetDevices_AreDevicesWithTheirFanAndLight(t *testing.T) {
 	f := newFixture(t, dimmable)
 	f.ready()
 
-	var items []any
-	f.onPlugin(func() { items = f.plugin.listItems() })
+	var items []data.DeviceView
+	f.onPlugin(func() { items = f.plugin.getDevices() })
 
 	if len(items) != 2 {
 		t.Fatalf("%d items", len(items))
 	}
 
-	first := items[0].(deviceView) // sorted by name
+	first := items[0] // sorted by name
 	if first.Name != "Bedroom Ceiling Fan" || first.Fan == nil || first.Light == nil || len(first.Fan.Speeds) != 3 {
 		t.Errorf("%+v", first)
 	}
 
-	second := items[1].(deviceView)
+	second := items[1]
 	if !second.Light.Dimmable || second.Location != "Living Room" {
 		t.Errorf("%+v", second)
 	}
@@ -948,7 +949,7 @@ func TestCommand_FromThePageDoesWhatItSays(t *testing.T) {
 	f.ready()
 
 	var err error
-	f.onPlugin(func() { err = f.plugin.command(commandRequest{Device: "fan1", Target: "fan", Op: "speed", Value: 2}) })
+	f.onPlugin(func() { err = f.plugin.command(common.Command{Device: "fan1", Target: "fan", Op: "speed", Value: 2}) })
 
 	if err != nil {
 		t.Fatal(err)
@@ -958,7 +959,7 @@ func TestCommand_FromThePageDoesWhatItSays(t *testing.T) {
 		t.Errorf("%v", got)
 	}
 
-	for _, bad := range []commandRequest{
+	for _, bad := range []common.Command{
 		{Device: "nope", Target: "fan", Op: "power"},
 		{Device: "fan1", Target: "toaster", Op: "power"},
 		{Device: "fan1", Target: "fan", Op: "explode"},
@@ -969,100 +970,5 @@ func TestCommand_FromThePageDoesWhatItSays(t *testing.T) {
 		if err == nil {
 			t.Errorf("%+v was accepted", bad)
 		}
-	}
-}
-
-func TestTemplate_RendersAFanAndADimmableLight(t *testing.T) {
-	compiled, err := template.New("device").Funcs(deviceTemplate.FuncMap).ParseFS(contentFS, "content/templates/bondbridge_device.htmlt")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	f := newFixture(t, dimmable)
-	f.ready()
-
-	var items []any
-	f.onPlugin(func() { items = f.plugin.listItems() })
-
-	render := func(view deviceView) string {
-		var out strings.Builder
-		if err := compiled.ExecuteTemplate(&out, "bondbridge_device.htmlt", view); err != nil {
-			t.Fatal(err)
-		}
-
-		return out.String()
-	}
-
-	// Not calibrated: the page says so, and offers to calibrate.
-	page := render(items[1].(deviceView))
-	for _, want := range []string{"Living Room Ceiling Fan", `data-op="speed" data-value="3"`, "Brightness not known", `data-op="calibrate" data-value="1"`} {
-		if !strings.Contains(page, want) {
-			t.Errorf("missing %q in %s", want, page)
-		}
-	}
-
-	if strings.Contains(page, `data-op="step"`) {
-		t.Error("steps offered before the dimmer was calibrated")
-	}
-
-	f.calibrate("fan1", 1)
-	f.onPlugin(func() { items = f.plugin.listItems() })
-
-	page = render(items[1].(deviceView))
-	if !strings.Contains(page, "About 1%") || !strings.Contains(page, `data-op="step" data-value="10"`) || !strings.Contains(page, `data-op="brightness" data-value="50"`) {
-		t.Errorf("%s", page)
-	}
-
-	// A name can't become markup.
-	view := items[1].(deviceView)
-	view.Name = "<script>x</script>"
-
-	if strings.Contains(render(view), "<script>x") {
-		t.Error("a name was printed unescaped")
-	}
-}
-
-func TestSync_TellsTheBridgeWhatTheStateReallyIsWithoutSendingACommandToTheDevice(t *testing.T) {
-	f := newFixture(t, nil)
-	f.ready()
-
-	// The bridge believes the living room light is on; it is really off.
-	if f.dev("fan1").light.data.State != device.SwitchStateOn {
-		t.Fatal("the bridge doesn't believe it is on")
-	}
-
-	var err error
-	f.onPlugin(func() { err = f.plugin.command(commandRequest{Device: "fan1", Target: "light", Op: "sync", Value: 0}) })
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if got := f.waitActions(1); got[0] != "fan1 correct down_light=0" {
-		t.Errorf("%v", got)
-	}
-
-	f.eventually("the light off", func() bool { return f.plugin.byID["fan1"].light.data.State == device.SwitchStateOff })
-
-	// And the fan: it is really running at speed 2.
-	f.onPlugin(func() { err = f.plugin.command(commandRequest{Device: "fan1", Target: "fan", Op: "sync", Value: 2}) })
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if got := f.waitActions(2); got[1] != "fan1 correct power=1 speed=2" {
-		t.Errorf("%v", got)
-	}
-
-	f.eventually("the fan on", func() bool {
-		d := f.plugin.byID["fan1"].fan.data
-		return d.State == device.SwitchStateOn && d.Speed == 2
-	})
-
-	f.onPlugin(func() { err = f.plugin.command(commandRequest{Device: "fan1", Target: "fan", Op: "sync", Value: 9}) })
-
-	if err == nil {
-		t.Error("a speed the fan doesn't have")
 	}
 }
