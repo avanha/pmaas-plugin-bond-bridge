@@ -647,7 +647,7 @@ const testRamp = 4 * time.Second
 const testDelay = 500 * time.Millisecond
 
 func dimmable(c *PluginConfig) {
-	c.Options("fan1", DeviceOptions{DimRamp: testRamp, DimDelay: testDelay, DimMinHold: testDelay + minimumTap})
+	c.Options("fan1", DeviceOptions{DimRamp: testRamp, DimDelay: testDelay, DimMinHold: testDelay + minimumTap, DimCooldown: -1})
 }
 
 func TestLight_WithoutARampItCannotBeDimmed(t *testing.T) {
@@ -796,7 +796,7 @@ func TestLight_ASwitchedOffLightIsSwitchedOnBeforeItIsDimmed(t *testing.T) {
 	var handle *LightHandle
 
 	f := newFixture(t, func(c *PluginConfig) {
-		c.Options("fan2", DeviceOptions{DimRamp: testRamp, DimDelay: testDelay, DimMinHold: testDelay + minimumTap})
+		c.Options("fan2", DeviceOptions{DimRamp: testRamp, DimDelay: testDelay, DimMinHold: testDelay + minimumTap, DimCooldown: -1})
 		handle = c.Light("fan2") // its down light is off
 	})
 	f.ready()
@@ -999,7 +999,7 @@ func TestLight_TheDimmerIsStartedWithTheCommandTheDeviceObeysIfTheBridgeHasTwo(t
 	bridge.commands = map[string]string{"StartDownLightDimmer": "5484616f"}
 
 	f := newFixtureWith(t, bridge, func(c *PluginConfig) {
-		c.Options("fan2", DeviceOptions{DimRamp: testRamp, DimDelay: testDelay, DimMinHold: testDelay + minimumTap})
+		c.Options("fan2", DeviceOptions{DimRamp: testRamp, DimDelay: testDelay, DimMinHold: testDelay + minimumTap, DimCooldown: -1})
 		handle = c.Light("fan2")
 	})
 	f.ready()
@@ -1013,4 +1013,43 @@ func TestLight_TheDimmerIsStartedWithTheCommandTheDeviceObeysIfTheBridgeHasTwo(t
 	if got[0] != "fan2 TurnDownLightOn" || got[1] != "fan2 transmit 5484616f" {
 		t.Errorf("%v", got)
 	}
+}
+
+func TestLight_TheDimmerRestsAfterAHoldAndAPageCommandMeanwhileIsRefused(t *testing.T) {
+	var handle *LightHandle
+
+	f := newFixture(t, func(c *PluginConfig) {
+		c.Options("fan1", DeviceOptions{DimRamp: testRamp, DimDelay: testDelay, DimMinHold: testDelay + minimumTap, DimCooldown: 2 * time.Second})
+		handle = c.Light("fan1")
+	})
+	f.ready()
+	f.calibrate("fan1", 1)
+
+	if err := handle.SetBrightness(51); err != nil {
+		t.Fatal(err)
+	}
+
+	f.waitActions(1)
+	f.release(testDelay + testRamp*50/99)
+	f.waitActions(2) // the stop
+
+	// Resting: the light is still busy, and a press on the page is refused instead of queued.
+	f.waitTimers(1)
+
+	var busy bool
+
+	var err error
+
+	f.onPlugin(func() {
+		busy = f.plugin.byID["fan1"].light.busy
+		err = f.plugin.command(common.Command{Device: "fan1", Target: "light", Op: "step", Value: 10})
+	})
+
+	if !busy || err == nil || !strings.Contains(err.Error(), "being dimmed") {
+		t.Fatalf("busy %v, err %v", busy, err)
+	}
+
+	f.advance(2 * time.Second)
+	f.fire()
+	f.eventually("the rest to end", func() bool { return !f.plugin.byID["fan1"].light.busy })
 }

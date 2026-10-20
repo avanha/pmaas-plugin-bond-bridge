@@ -14,6 +14,11 @@ class BondDevices {
             });
         });
 
+        // While a light is being dimmed the page is loaded again until it is done, which enables its buttons.
+        if (this.doc.querySelector(".busy")) {
+            setTimeout(() => location.reload(), 1000);
+        }
+
         return cards.length > 0;
     }
 

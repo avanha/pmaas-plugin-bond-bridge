@@ -465,6 +465,11 @@ func (p *plugin) command(request common.Command) error {
 			return errors.New("the device has no light")
 		}
 
+		// A page can't see what is queued, and a press while the dimmer runs only confuses the fan.
+		if dev.light.busy && request.Op != "sync" {
+			return errors.New("the light is being dimmed: wait for it to finish")
+		}
+
 		switch request.Op {
 		case "power":
 			return dev.light.SetState(state)

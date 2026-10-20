@@ -35,11 +35,11 @@
             {{if .Light.Busy}}<span class="busy">dimming…</span>{{end}}
         </div>
         <div class="buttons">
-            <button type="button" class="cmd" data-op="power" data-value="{{if .Light.On}}0{{else}}1{{end}}">{{if .Light.On}}Turn off{{else}}Turn on{{end}}</button>
+            <button type="button" class="cmd"{{if .Light.Busy}} disabled{{end}} data-op="power" data-value="{{if .Light.On}}0{{else}}1{{end}}">{{if .Light.On}}Turn off{{else}}Turn on{{end}}</button>
         </div>
         <div class="note">If the state is wrong, tell the bridge (nothing is sent to the light):
-            <button type="button" class="cmd" data-op="sync" data-value="0">It's really off</button>
-            <button type="button" class="cmd" data-op="sync" data-value="1">It's really on</button>
+            <button type="button" class="cmd"{{if .Light.Busy}} disabled{{end}} data-op="sync" data-value="0">It's really off</button>
+            <button type="button" class="cmd"{{if .Light.Busy}} disabled{{end}} data-op="sync" data-value="1">It's really on</button>
         </div>
         {{if .Light.Dimmable}}
         <div class="dim">
@@ -49,8 +49,8 @@
                 <span class="estimate" title="Worked out from how long the dimmer was run, so it drifts">(estimated)</span>
             </div>
             <div class="buttons">
-                <button type="button" class="cmd" data-op="step" data-value="-{{.Light.Step}}" title="Dimmer">&minus; {{.Light.Step}}%</button>
-                <button type="button" class="cmd" data-op="step" data-value="{{.Light.Step}}" title="Brighter">+ {{.Light.Step}}%</button>
+                <button type="button" class="cmd"{{if .Light.Busy}} disabled{{end}} data-op="step" data-value="-{{.Light.Step}}" title="Dimmer">&minus; {{.Light.Step}}%</button>
+                <button type="button" class="cmd"{{if .Light.Busy}} disabled{{end}} data-op="step" data-value="{{.Light.Step}}" title="Brighter">+ {{.Light.Step}}%</button>
                 {{range .Light.Presets}}
                 <button type="button" class="cmd preset" data-op="brightness" data-value="{{.}}">{{.}}%</button>
                 {{end}}
@@ -60,8 +60,8 @@
             {{end}}
             <div class="note">Calibrate when the light is at an end, with the remote or the app:</div>
             <div class="buttons">
-                <button type="button" class="cmd" data-op="calibrate" data-value="1">It's at its dimmest</button>
-                <button type="button" class="cmd" data-op="calibrate" data-value="100">It's at its brightest</button>
+                <button type="button" class="cmd"{{if .Light.Busy}} disabled{{end}} data-op="calibrate" data-value="1">It's at its dimmest</button>
+                <button type="button" class="cmd"{{if .Light.Busy}} disabled{{end}} data-op="calibrate" data-value="100">It's at its brightest</button>
             </div>
         </div>
         {{end}}

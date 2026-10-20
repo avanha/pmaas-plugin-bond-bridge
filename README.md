@@ -43,6 +43,9 @@ So the plugin reaches a brightness by timing a hold, which needs three things:
    fan for a button press, which switches the light on or off, so the plugin never holds for less, and doesn't count it as movement.
 0. `DimMinHold`: the shortest hold made (default 1.4 seconds). Measured on a bedroom fan, 1.25 s was safe and about 1.1 s switched the
    light. So the finest step is what that hold moves, about 10%, and a smaller change is rounded to nothing or to a step.
+0. `DimCooldown`: the rest after each hold (default 1 second), before the next hold or a new command; the fan's receiver is easily
+   confused by commands close together. The light is busy meanwhile: the page disables its buttons, and a command from the page is
+   refused instead of queued.
 1. `DimRamp`: how long the light takes from its dimmest to its brightest while held. Time it once with the remote. Without it, the
    light is on/off only.
 2. **Calibration.** Nothing reads the brightness, so the plugin must be told where the dimmer is: put the light at its dimmest (or

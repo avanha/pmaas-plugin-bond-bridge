@@ -19,6 +19,9 @@ const maxQueued = 5
 // defaultDimDelay is DimDelay when none is given.
 const defaultDimDelay = time.Second
 
+// defaultDimCooldown is DimCooldown when none is given.
+const defaultDimCooldown = time.Second
+
 // defaultDimMinHold is DimMinHold when none is given.
 const defaultDimMinHold = 1400 * time.Millisecond
 
@@ -79,6 +82,9 @@ type light struct {
 	// the dimmer is when its turn comes.
 	busy  bool
 	queue []func() []dimmer.Move
+
+	// cooldown is the rest after each hold; none if it isn't positive.
+	cooldown time.Duration
 }
 
 var _ device.ILight = (*light)(nil)
@@ -93,9 +99,14 @@ func newLight(dev *bondDevice, acts lightActions) *light {
 		l.model.Delay = dev.options.DimDelay
 
 		l.model.MinHold = dev.options.DimMinHold
+		l.cooldown = dev.options.DimCooldown
 
 		if l.model.Delay == 0 {
 			l.model.Delay = defaultDimDelay
+		}
+
+		if l.cooldown == 0 {
+			l.cooldown = defaultDimCooldown
 		}
 
 		if l.model.MinHold == 0 {
@@ -368,7 +379,26 @@ func (l *light) stopAndGo(ctx context.Context, moves []dimmer.Move, index int, s
 		}
 
 		l.model.Apply(held)
-		l.run(moves, index+1)
+		l.rest(func() { l.run(moves, index+1) })
+	})
+}
+
+// rest does the next thing once the dimmer has been left alone for the cooldown. The light stays busy meanwhile.
+func (l *light) rest(next func()) {
+	p := l.dev.p
+
+	if l.cooldown <= 0 {
+		next()
+
+		return
+	}
+
+	p.after(l.cooldown, func() {
+		p.later(func() {
+			if !p.stopped {
+				next()
+			}
+		})
 	})
 }
 

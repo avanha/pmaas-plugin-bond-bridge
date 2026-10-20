@@ -48,6 +48,10 @@ type DeviceOptions struct {
 	// of this length moves is rounded, so it is the finest step there is.
 	DimMinHold time.Duration
 
+	// DimCooldown is how long the dimmer is left alone after each hold, before the next hold or a new command. The fan's receiver
+	// is easily confused by commands close together. The default is 1 second. A negative value is none.
+	DimCooldown time.Duration
+
 	// DimKeepsDirection is that a new hold of the dimmer carries on the way the last went. The default is that it starts the other
 	// way, as most remotes do. Check by holding the remote's dim button twice.
 	DimKeepsDirection bool
