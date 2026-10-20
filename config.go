@@ -133,8 +133,8 @@ var _ device.IFan = (*FanHandle)(nil)
 // FanHandle is an entity.Ref, so that the assembly can put the fan in a group.
 var _ entity.Ref = (*FanHandle)(nil)
 
-func (h *FanHandle) EntityId() (string, bool) {
-	return h.stub.EntityId()
+func (h *FanHandle) RegisteredId() (string, bool) {
+	return h.stub.RegisteredId()
 }
 
 func (h *FanHandle) get() (device.IFan, error) {
@@ -202,8 +202,8 @@ var _ device.ILight = (*LightHandle)(nil)
 // LightHandle is an entity.Ref, so that the assembly can put the light in a group.
 var _ entity.Ref = (*LightHandle)(nil)
 
-func (h *LightHandle) EntityId() (string, bool) {
-	return h.stub.EntityId()
+func (h *LightHandle) RegisteredId() (string, bool) {
+	return h.stub.RegisteredId()
 }
 
 func (h *LightHandle) get() (device.ILight, error) {

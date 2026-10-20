@@ -1077,14 +1077,14 @@ func TestGroups_TheHandlesNameTheirEntitiesAndTheirViewsAreTheDevicesCard(t *tes
 		fan, light = c.Fan("fan2"), c.Light("fan2")
 	})
 
-	if _, ok := fan.EntityId(); ok {
+	if _, ok := fan.RegisteredId(); ok {
 		t.Error("the fan has an id before it is registered")
 	}
 
 	f.ready()
 
-	fanId, fanOk := fan.EntityId()
-	lightId, lightOk := light.EntityId()
+	fanId, fanOk := fan.RegisteredId()
+	lightId, lightOk := light.RegisteredId()
 
 	if !fanOk || !lightOk || fanId == lightId {
 		t.Fatalf("%q %v %q %v", fanId, fanOk, lightId, lightOk)
@@ -1116,7 +1116,7 @@ func TestGroups_TheHandlesNameTheirEntitiesAndTheirViewsAreTheDevicesCard(t *tes
 
 	f.onPlugin(func() { f.plugin.Stop() })
 
-	if _, ok := fan.EntityId(); ok {
+	if _, ok := fan.RegisteredId(); ok {
 		t.Error("the fan still has an id after the plugin stopped")
 	}
 }
