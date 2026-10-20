@@ -16,6 +16,7 @@ import (
 	spi "github.com/avanha/pmaas-spi"
 	"github.com/avanha/pmaas-spi/device"
 	"github.com/avanha/pmaas-spi/environment"
+	"github.com/avanha/pmaas-spi/group"
 	"github.com/avanha/pmaas-spi/logging"
 )
 
@@ -436,7 +437,15 @@ func (p *plugin) deviceView(dev *bondDevice) data.DeviceView {
 // light of a device are one card, so they share a key and a page that holds both draws it once.
 func (p *plugin) registerView(dev *bondDevice, entityId string) {
 	err := p.container.RegisterEntityView(entityId, func() (spi.EntityView, error) {
-		return spi.EntityView{Key: "bond/" + dev.info.ID, Value: p.deviceView(dev)}, nil
+		view := p.deviceView(dev)
+
+		// A device with a fan is a fan on a page that sorts by kind, whichever of its entities is asked about: it is one card.
+		category := group.CategoryFans
+		if view.Fan == nil {
+			category = group.CategoryLights
+		}
+
+		return spi.EntityView{Key: "bond/" + dev.info.ID, Category: category, Value: view}, nil
 	})
 	if err != nil {
 		p.log.Error("unable to register the view of an entity", "device", dev.info.Name, "error", err)

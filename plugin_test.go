@@ -1105,8 +1105,8 @@ func TestGroups_TheHandlesNameTheirEntitiesAndTheirViewsAreTheDevicesCard(t *tes
 		}
 	})
 
-	if fanView.Key != "bond/fan2" || fanView.Key != lightView.Key {
-		t.Errorf("%q %q", fanView.Key, lightView.Key)
+	if fanView.Key != "bond/fan2" || fanView.Key != lightView.Key || fanView.Category != "Fans" || lightView.Category != "Fans" {
+		t.Errorf("%q %q %q %q", fanView.Key, lightView.Key, fanView.Category, lightView.Category)
 	}
 
 	card, ok := fanView.Value.(data.DeviceView)
