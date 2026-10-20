@@ -43,6 +43,11 @@ type DeviceOptions struct {
 	// is moving, which is the hold less this.
 	DimDelay time.Duration
 
+	// DimMinHold is the shortest hold of the dimmer made: the fan takes a shorter one for a press of the button, which switches the
+	// light. Measured on a bedroom fan, 1.25s was safe and about 1.1s was not. The default is 1.4 seconds. A change smaller than a hold
+	// of this length moves is rounded, so it is the finest step there is.
+	DimMinHold time.Duration
+
 	// DimKeepsDirection is that a new hold of the dimmer carries on the way the last went. The default is that it starts the other
 	// way, as most remotes do. Check by holding the remote's dim button twice.
 	DimKeepsDirection bool

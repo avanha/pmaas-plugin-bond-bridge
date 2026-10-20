@@ -189,3 +189,28 @@ func TestModel_NoHoldIsShorterThanTheDelay(t *testing.T) {
 		}
 	}
 }
+
+func TestModel_ASmallChangeIsRoundedToNothingOrToTheShortestHold(t *testing.T) {
+	m := New(6 * time.Second)
+	m.Delay = 800 * time.Millisecond
+	m.MinHold = 1400 * time.Millisecond // moves for 600ms: about 10 levels
+	m.Alternates = false
+	m.Calibrate(50, true)
+
+	if moves := m.Plan(53); len(moves) != 0 {
+		t.Errorf("3 levels is under half a step, but %+v", moves)
+	}
+
+	moves := m.Plan(58) // 8 levels: nearer a step than nothing
+	if len(moves) != 1 || moves[0].Hold != 1400*time.Millisecond {
+		t.Errorf("%+v", moves)
+	}
+
+	for _, target := range []int{51, 52, 55, 60, 70, 99} {
+		for _, move := range m.Plan(target) {
+			if move.Hold < m.MinHold {
+				t.Errorf("target %d: a hold of %v is shorter than the minimum", target, move.Hold)
+			}
+		}
+	}
+}

@@ -39,6 +39,11 @@ type Model struct {
 	// switches the light on or off. It is not moving, so it is not in the travel: every hold is Delay longer than the movement.
 	Delay time.Duration
 
+	// MinHold is the shortest hold that doesn't switch the light: the fan takes a shorter one for a press of the button. It is
+	// longer than Delay. Movement comes in steps of at least what a hold of this length does, so a smaller change is either rounded to
+	// nothing or up to a step.
+	MinHold time.Duration
+
 	// Alternates is that each hold starts the other way from the one before. If it is false a hold carries on the same way. The
 	// remotes that hold to dim mostly alternate.
 	Alternates bool
@@ -98,21 +103,30 @@ func (m *Model) Plan(target int) []Move {
 
 	if m.Alternates {
 		// A tap in the direction it goes, then the other way.
-		tap := m.levels(m.Delay + minHold)
+		tap := m.levels(m.shortest())
 		afterTap, _ := advance(m.level, m.up, tap)
 		cost := tap + m.path(afterTap, !m.up, goal) + float64(m.Delay)/float64(m.ramp)*span // the second hold has a delay of its own, spent not moving
 
 		if cost < bestCost {
-			best = []Move{{Hold: m.Delay + minHold, Up: m.up}, {Hold: m.hold(m.path(afterTap, !m.up, goal)), Up: !m.up}}
+			best = []Move{{Hold: m.shortest(), Up: m.up}, {Hold: m.hold(m.path(afterTap, !m.up, goal)), Up: !m.up}}
 		}
 	}
 
 	var moves []Move
 
+	shortest := m.shortest()
+
 	for _, move := range best {
-		if move.Hold >= m.Delay+minHold {
-			moves = append(moves, move)
+		if move.Hold < shortest {
+			// Less than a step: round to the nearer of nothing and a step.
+			if m.levels(move.Hold)*2 < m.levels(shortest) {
+				continue
+			}
+
+			move.Hold = shortest
 		}
+
+		moves = append(moves, move)
 	}
 
 	return moves
@@ -154,6 +168,11 @@ func (m *Model) path(level float64, up bool, goal float64) float64 {
 	}
 
 	return (level - Min) + (goal - Min)
+}
+
+// shortest is the shortest hold made.
+func (m *Model) shortest() time.Duration {
+	return max(m.MinHold, m.Delay+minHold)
 }
 
 // levels is how many levels the dimmer moves in the time.

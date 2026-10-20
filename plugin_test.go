@@ -647,7 +647,7 @@ const testRamp = 4 * time.Second
 const testDelay = 500 * time.Millisecond
 
 func dimmable(c *PluginConfig) {
-	c.Options("fan1", DeviceOptions{DimRamp: testRamp, DimDelay: testDelay})
+	c.Options("fan1", DeviceOptions{DimRamp: testRamp, DimDelay: testDelay, DimMinHold: testDelay + minimumTap})
 }
 
 func TestLight_WithoutARampItCannotBeDimmed(t *testing.T) {
@@ -796,7 +796,7 @@ func TestLight_ASwitchedOffLightIsSwitchedOnBeforeItIsDimmed(t *testing.T) {
 	var handle *LightHandle
 
 	f := newFixture(t, func(c *PluginConfig) {
-		c.Options("fan2", DeviceOptions{DimRamp: testRamp, DimDelay: testDelay})
+		c.Options("fan2", DeviceOptions{DimRamp: testRamp, DimDelay: testDelay, DimMinHold: testDelay + minimumTap})
 		handle = c.Light("fan2") // its down light is off
 	})
 	f.ready()
@@ -999,7 +999,7 @@ func TestLight_TheDimmerIsStartedWithTheCommandTheDeviceObeysIfTheBridgeHasTwo(t
 	bridge.commands = map[string]string{"StartDownLightDimmer": "5484616f"}
 
 	f := newFixtureWith(t, bridge, func(c *PluginConfig) {
-		c.Options("fan2", DeviceOptions{DimRamp: testRamp, DimDelay: testDelay})
+		c.Options("fan2", DeviceOptions{DimRamp: testRamp, DimDelay: testDelay, DimMinHold: testDelay + minimumTap})
 		handle = c.Light("fan2")
 	})
 	f.ready()

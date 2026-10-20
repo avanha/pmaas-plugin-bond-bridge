@@ -19,6 +19,9 @@ const maxQueued = 5
 // defaultDimDelay is DimDelay when none is given.
 const defaultDimDelay = time.Second
 
+// defaultDimMinHold is DimMinHold when none is given.
+const defaultDimMinHold = 1400 * time.Millisecond
+
 // stopTries is how often the stop that ends a dimming is tried: a dimmer left running goes on for good.
 const stopTries = 3
 
@@ -89,8 +92,14 @@ func newLight(dev *bondDevice, acts lightActions) *light {
 		l.model.Alternates = !dev.options.DimKeepsDirection
 		l.model.Delay = dev.options.DimDelay
 
+		l.model.MinHold = dev.options.DimMinHold
+
 		if l.model.Delay == 0 {
 			l.model.Delay = defaultDimDelay
+		}
+
+		if l.model.MinHold == 0 {
+			l.model.MinHold = defaultDimMinHold
 		}
 		l.data.Dimmable = true
 	}
