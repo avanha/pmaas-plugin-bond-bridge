@@ -37,7 +37,7 @@ var fanActions = []string{"DecreaseSpeed", "IncreaseSpeed", "SetDirection", "Set
 func newFakeBridge() *fakeBridge {
 	return &fakeBridge{
 		state: map[string]bond.State{
-			"fan1": {Power: ptr(0), Speed: ptr(1), Direction: ptr(1), Light: ptr(0), UpLight: ptr(0), DownLight: ptr(1)},
+			"fan1": {Power: ptr(0), Speed: ptr(1), Direction: ptr(1), Light: ptr(1), UpLight: ptr(0), DownLight: ptr(1)},
 			"fan2": {Power: ptr(1), Speed: ptr(2), Direction: ptr(-1), Light: ptr(0), UpLight: ptr(0), DownLight: ptr(0)},
 		},
 		failDo: map[string]bool{},
@@ -103,9 +103,9 @@ func (b *fakeBridge) Do(_ context.Context, id string, action string, argument *i
 	case "SetDirection":
 		s.Direction = argument
 	case "TurnDownLightOn":
-		s.DownLight = ptr(1)
+		s.Light = ptr(1)
 	case "TurnDownLightOff":
-		s.DownLight = ptr(0)
+		s.Light = ptr(0)
 	}
 
 	b.state[id] = s
@@ -122,7 +122,7 @@ func (b *fakeBridge) Correct(_ context.Context, id string, patch map[string]int)
 	}
 
 	text := id + " correct"
-	for _, key := range []string{"power", "speed", "light", "down_light"} {
+	for _, key := range []string{"power", "speed", "light"} {
 		if v, ok := patch[key]; ok {
 			text += fmt.Sprintf(" %s=%d", key, v)
 		}
@@ -132,8 +132,8 @@ func (b *fakeBridge) Correct(_ context.Context, id string, patch map[string]int)
 
 	s := b.state[id]
 
-	if v, ok := patch["down_light"]; ok {
-		s.DownLight = ptr(v)
+	if v, ok := patch["light"]; ok {
+		s.Light = ptr(v)
 	}
 
 	if v, ok := patch["power"]; ok {

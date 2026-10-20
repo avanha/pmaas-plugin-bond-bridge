@@ -25,7 +25,7 @@ type API interface {
 	// Do sends an action, with its argument if it takes one.
 	Do(ctx context.Context, id string, action string, argument *int) error
 
-	// Correct changes what the bridge believes the state of a device is, by state variable ("down_light": 0), without the bridge
+	// Correct changes what the bridge believes the state of a device is, by state variable ("light": 0), without the bridge
 	// transmitting anything. It is for when the belief is wrong: the bridge only knows what it has sent.
 	Correct(ctx context.Context, id string, state map[string]int) error
 }

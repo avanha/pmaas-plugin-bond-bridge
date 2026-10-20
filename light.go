@@ -30,9 +30,13 @@ type lightActions struct {
 
 // chooseLight is the light of the device to use, if it has one.
 func chooseLight(info bond.Device, choice LightChoice) (lightActions, bool) {
-	down := lightActions{"down_light", "TurnDownLightOn", "TurnDownLightOff", "StartDownLightDimmer", "Stop", func(s bond.State) *int { return s.DownLight }}
-	up := lightActions{"up_light", "TurnUpLightOn", "TurnUpLightOff", "StartUpLightDimmer", "Stop", func(s bond.State) *int { return s.UpLight }}
-	plain := lightActions{"light", "TurnLightOn", "TurnLightOff", "StartDimmer", "Stop", func(s bond.State) *int { return s.Light }}
+	// Whichever light of the fan is used, the bridge reports whether it is on in "light". Its "down_light" and "up_light" say which
+	// fixtures the fan has, and do not change with the commands.
+	light := func(s bond.State) *int { return s.Light }
+
+	down := lightActions{"light", "TurnDownLightOn", "TurnDownLightOff", "StartDownLightDimmer", "Stop", light}
+	up := lightActions{"light", "TurnUpLightOn", "TurnUpLightOff", "StartUpLightDimmer", "Stop", light}
+	plain := lightActions{"light", "TurnLightOn", "TurnLightOff", "StartDimmer", "Stop", light}
 
 	has := func(l lightActions) bool { return info.Has(l.on) && info.Has(l.off) }
 
