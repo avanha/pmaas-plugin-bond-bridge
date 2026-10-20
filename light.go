@@ -16,6 +16,9 @@ import (
 // maxQueued is how many brightness changes are kept waiting while one is being made. More than that are a mistake, or a held key.
 const maxQueued = 5
 
+// defaultDimDelay is DimDelay when none is given.
+const defaultDimDelay = time.Second
+
 // stopTries is how often the stop that ends a dimming is tried: a dimmer left running goes on for good.
 const stopTries = 3
 
@@ -84,6 +87,11 @@ func newLight(dev *bondDevice, acts lightActions) *light {
 	if dev.info.Has(acts.dim) && dev.info.Has(acts.stop) && dev.options.DimRamp > 0 {
 		l.model = dimmer.New(dev.options.DimRamp)
 		l.model.Alternates = !dev.options.DimKeepsDirection
+		l.model.Delay = dev.options.DimDelay
+
+		if l.model.Delay == 0 {
+			l.model.Delay = defaultDimDelay
+		}
 		l.data.Dimmable = true
 	}
 

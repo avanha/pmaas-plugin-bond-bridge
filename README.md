@@ -39,6 +39,8 @@ The bridge **cannot be told a brightness**. It can only *start the dimmer* and *
 does, and the light then sweeps up and down, turning round at the ends, until it is stopped. (That is why the app is hard to use.)
 So the plugin reaches a brightness by timing a hold, which needs three things:
 
+0. `DimDelay`: how long the dimmer has to be held before the light starts to move (default 1 second). A shorter hold is taken by the
+   fan for a button press, which switches the light on or off, so the plugin never holds for less, and doesn't count it as movement.
 1. `DimRamp`: how long the light takes from its dimmest to its brightest while held. Time it once with the remote. Without it, the
    light is on/off only.
 2. **Calibration.** Nothing reads the brightness, so the plugin must be told where the dimmer is: put the light at its dimmest (or

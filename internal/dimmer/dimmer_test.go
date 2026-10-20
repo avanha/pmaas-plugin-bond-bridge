@@ -150,3 +150,42 @@ func TestForgetDropsTheEstimate(t *testing.T) {
 		t.Error("still known")
 	}
 }
+
+func TestModel_EveryHoldIsLongerByTheDelayBecauseTheLightDoesNotMoveDuringIt(t *testing.T) {
+	m := New(6 * time.Second)
+	m.Delay = time.Second
+	m.Calibrate(100, false)
+
+	moves := m.Plan(50) // 50 of the 99 levels, a little over 3s of movement
+	if len(moves) != 1 || moves[0].Hold < 4*time.Second || moves[0].Hold > 4100*time.Millisecond {
+		t.Fatalf("%+v", moves)
+	}
+
+	m.Apply(moves[0].Hold)
+
+	if got := m.Level(); got != 50 {
+		t.Errorf("level %d", got)
+	}
+
+	// A hold no longer than the delay doesn't move it: the fan takes it for a button press.
+	before := m.Level()
+	m.Apply(time.Second)
+
+	if m.Level() != before {
+		t.Errorf("a hold of the delay moved the level from %d to %d", before, m.Level())
+	}
+}
+
+func TestModel_NoHoldIsShorterThanTheDelay(t *testing.T) {
+	m := New(6 * time.Second)
+	m.Delay = time.Second
+	m.Calibrate(100, true) // the next hold goes up, so 90 is the wrong way
+
+	for _, target := range []int{99, 95, 90, 60, 1} {
+		for _, move := range m.Plan(target) {
+			if move.Hold <= m.Delay {
+				t.Errorf("target %d: a hold of %v would switch the light", target, move.Hold)
+			}
+		}
+	}
+}

@@ -37,6 +37,12 @@ type DeviceOptions struct {
 	// brightest) and drifts after that.
 	DimRamp time.Duration
 
+	// DimDelay is how long the dimmer has to be held before the light starts to move. A shorter hold is taken by the fan for a press
+	// of the button, which switches the light on or off, so no hold is made shorter than this. The default is 1 second, a little
+	// over what a Bond Bridge and a ceiling fan were measured to need. Measure it: hold the dimmer and time how long the light
+	// is moving, which is the hold less this.
+	DimDelay time.Duration
+
 	// DimKeepsDirection is that a new hold of the dimmer carries on the way the last went. The default is that it starts the other
 	// way, as most remotes do. Check by holding the remote's dim button twice.
 	DimKeepsDirection bool

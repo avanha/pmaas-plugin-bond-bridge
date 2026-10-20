@@ -19,7 +19,7 @@ const (
 // span is how many levels the dimmer travels from end to end.
 const span = Max - Min
 
-// minHold is the shortest hold worth making: shorter is lost in the lag of the network and the radio.
+// minHold is the shortest movement worth making: shorter is lost in the lag of the network and the radio.
 const minHold = 80 * time.Millisecond
 
 // Move is running the dimmer for a time, in the direction it goes (Up is only for the log: it can't be chosen).
@@ -34,6 +34,10 @@ type Model struct {
 	level float64
 	up    bool // the next hold goes up
 	known bool
+
+	// Delay is how long a hold has to be before the light starts to move. A shorter one is taken for a press of the button, which
+	// switches the light on or off. It is not moving, so it is not in the travel: every hold is Delay longer than the movement.
+	Delay time.Duration
 
 	// Alternates is that each hold starts the other way from the one before. If it is false a hold carries on the same way. The
 	// remotes that hold to dim mostly alternate.
@@ -94,19 +98,19 @@ func (m *Model) Plan(target int) []Move {
 
 	if m.Alternates {
 		// A tap in the direction it goes, then the other way.
-		tap := m.levels(minHold)
+		tap := m.levels(m.Delay + minHold)
 		afterTap, _ := advance(m.level, m.up, tap)
-		cost := tap + m.path(afterTap, !m.up, goal)
+		cost := tap + m.path(afterTap, !m.up, goal) + float64(m.Delay)/float64(m.ramp)*span // the second hold has a delay of its own, spent not moving
 
 		if cost < bestCost {
-			best = []Move{{Hold: minHold, Up: m.up}, {Hold: m.hold(m.path(afterTap, !m.up, goal)), Up: !m.up}}
+			best = []Move{{Hold: m.Delay + minHold, Up: m.up}, {Hold: m.hold(m.path(afterTap, !m.up, goal)), Up: !m.up}}
 		}
 	}
 
 	var moves []Move
 
 	for _, move := range best {
-		if move.Hold >= minHold {
+		if move.Hold >= m.Delay+minHold {
 			moves = append(moves, move)
 		}
 	}
@@ -154,12 +158,16 @@ func (m *Model) path(level float64, up bool, goal float64) float64 {
 
 // levels is how many levels the dimmer moves in the time.
 func (m *Model) levels(held time.Duration) float64 {
-	return float64(held) / float64(m.ramp) * span
+	return float64(max(held-m.Delay, 0)) / float64(m.ramp) * span
 }
 
 // hold is the time to travel that many levels.
 func (m *Model) hold(levels float64) time.Duration {
-	return time.Duration(levels / span * float64(m.ramp))
+	if levels <= 0 {
+		return 0
+	}
+
+	return m.Delay + time.Duration(levels/span*float64(m.ramp))
 }
 
 // advance moves the level the distance in the direction, turning round at the ends. It returns where it ends and which way it was

@@ -643,8 +643,11 @@ func TestDiscovery_ABridgeThatDoesntAnswerIsAskedAgainLater(t *testing.T) {
 
 const testRamp = 4 * time.Second
 
+// testDelay is how long a hold has to be before the light moves.
+const testDelay = 500 * time.Millisecond
+
 func dimmable(c *PluginConfig) {
-	c.Options("fan1", DeviceOptions{DimRamp: testRamp})
+	c.Options("fan1", DeviceOptions{DimRamp: testRamp, DimDelay: testDelay})
 }
 
 func TestLight_WithoutARampItCannotBeDimmed(t *testing.T) {
@@ -724,7 +727,7 @@ func TestLight_ABrightnessIsReachedByRunningTheDimmerForTheTimeItTakes(t *testin
 		t.Fatalf("%v", got)
 	}
 
-	f.release(testRamp * 50 / 99)
+	f.release(testDelay + testRamp*50/99)
 
 	if got := f.waitActions(2); got[1] != "fan1 Stop" {
 		t.Fatalf("%v", got)
@@ -745,7 +748,7 @@ func TestLight_ABrightnessIsReachedByRunningTheDimmerForTheTimeItTakes(t *testin
 	}
 
 	f.waitActions(3)
-	f.release(testRamp * 10 / 99)
+	f.release(testDelay + testRamp*10/99)
 	f.waitActions(4)
 	f.eventually("41%", func() bool { return f.plugin.byID["fan1"].light.data.Brightness == 41 })
 }
@@ -764,7 +767,7 @@ func TestLight_TheWrongWayIsATapThatTurnsTheDimmerRoundAndThenTheHold(t *testing
 	// The next hold goes up, and 1 is as low as it gets: go up to 51 first.
 	_ = handle.SetBrightness(51)
 	f.waitActions(1)
-	f.release(testRamp * 50 / 99)
+	f.release(testDelay + testRamp*50/99)
 	f.eventually("51%", func() bool { return f.plugin.byID["fan1"].light.data.Brightness == 51 })
 
 	// Now the next hold goes down. Calibrating as "at 51 going up" makes down the wrong way.
@@ -776,9 +779,9 @@ func TestLight_TheWrongWayIsATapThatTurnsTheDimmerRoundAndThenTheHold(t *testing
 
 	// A tap up, and then the hold down.
 	f.waitActions(3)
-	f.release(minimumTap)
+	f.release(testDelay + minimumTap)
 	f.waitActions(5)
-	f.release(testRamp * 11 / 99)
+	f.release(testDelay + testRamp*11/99)
 	f.waitActions(6)
 	f.eventually("41%", func() bool {
 		d := f.plugin.byID["fan1"].light.data
@@ -793,7 +796,7 @@ func TestLight_ASwitchedOffLightIsSwitchedOnBeforeItIsDimmed(t *testing.T) {
 	var handle *LightHandle
 
 	f := newFixture(t, func(c *PluginConfig) {
-		c.Options("fan2", DeviceOptions{DimRamp: testRamp})
+		c.Options("fan2", DeviceOptions{DimRamp: testRamp, DimDelay: testDelay})
 		handle = c.Light("fan2") // its down light is off
 	})
 	f.ready()
@@ -996,7 +999,7 @@ func TestLight_TheDimmerIsStartedWithTheCommandTheDeviceObeysIfTheBridgeHasTwo(t
 	bridge.commands = map[string]string{"StartDownLightDimmer": "5484616f"}
 
 	f := newFixtureWith(t, bridge, func(c *PluginConfig) {
-		c.Options("fan2", DeviceOptions{DimRamp: testRamp})
+		c.Options("fan2", DeviceOptions{DimRamp: testRamp, DimDelay: testDelay})
 		handle = c.Light("fan2")
 	})
 	f.ready()
