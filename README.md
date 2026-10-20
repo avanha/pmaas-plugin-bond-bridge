@@ -56,11 +56,12 @@ The brightness shown is an estimate, and drifts with every hold, more with a lag
 hold is reached with a very short hold first, which turns the dimmer round. If a stop is lost the plugin tries again, and if it
 can't, it logs loudly, forgets where the dimmer is, and the light may keep sweeping until stopped from the remote.
 
-**Hold buttons.** Next to the brightness buttons the page has 1s to 5s, which run the dimmer for that many seconds of *movement* (the hold
-is the `DimDelay` longer, and never shorter than `DimMinHold`, so a 1s button is not a press that switches the light). With the 6 second ramp
-each is about 16%. They work whether or not the brightness is known, which is the way to move it by sight. The direction can't be chosen: a
-hold carries on the way the last went (with `DimKeepsDirection`) and turns round at an end, so the page says which way the next is expected
-to go, and has a button to correct that if you see otherwise (nothing is sent to the light).
+**Hold buttons.** Next to the brightness buttons the page has 2s to 6s, which hold the dimmer for that long. The light starts to move only after
+`DimDelay`, so with the defaults a 2s hold moves it for about 1.2 s (roughly 20% on the 6 second ramp) and a 6s hold for about 5.2 s. Nothing
+shorter than `DimMinHold` is offered or accepted, because the fan takes a shorter hold for a press of the button, which switches the light.
+They work whether or not the brightness is known, which is the way to move it by sight. The direction can't be chosen: a hold carries on the
+way the last went (with `DimKeepsDirection`) and turns round at an end, so the page says which way the next is expected to go, and has a
+button to correct that if you see otherwise (nothing is sent to the light).
 
 **Two commands for one dimmer.** Some fans, on firmware v4.39, have two recorded commands for each dimmer action ("Bottom Dimmer"
 twice). The action runs the first, and the fan may ignore it. The plugin finds the command that sends the same signal as the

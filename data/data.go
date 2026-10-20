@@ -35,7 +35,7 @@ type LightView struct {
 	Step    int
 	Presets []int
 
-	// Holds are the seconds the hold buttons move the dimmer for. NextUp is the way the next hold is expected to go, and
+	// Holds are the seconds the hold buttons hold the dimmer for. NextUp is the way the next hold is expected to go, and
 	// DirectionKnown is whether anything is known about it: only once the dimmer has been calibrated.
 	Holds          []int
 	NextUp         bool

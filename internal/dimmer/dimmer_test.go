@@ -215,7 +215,7 @@ func TestModel_ASmallChangeIsRoundedToNothingOrToTheShortestHold(t *testing.T) {
 	}
 }
 
-func TestPlanHold_IsTheTimeItMovesAndTheDelayBeforeItDoesWhereverTheLevelIs(t *testing.T) {
+func TestPlanHold_IsTheHoldAsMadeWhereverTheLevelIsAndNothingShorterThanTheMinimum(t *testing.T) {
 	m := New(ramp)
 	m.Delay = 800 * time.Millisecond
 	m.MinHold = 1400 * time.Millisecond
@@ -223,34 +223,37 @@ func TestPlanHold_IsTheTimeItMovesAndTheDelayBeforeItDoesWhereverTheLevelIs(t *t
 	// No level is known, and it still plans: a person judges how far it went.
 	moves := m.PlanHold(2 * time.Second)
 
-	if len(moves) != 1 || moves[0].Hold != 2800*time.Millisecond {
+	if len(moves) != 1 || moves[0].Hold != 2*time.Second {
 		t.Fatalf("%+v", moves)
 	}
 
-	if len(m.PlanHold(0)) != 0 {
-		t.Error("a hold for no time")
+	// A hold the fan would take for a press of the button is not made, however it is rounded.
+	for _, hold := range []time.Duration{0, time.Second, 1399 * time.Millisecond} {
+		if len(m.PlanHold(hold)) != 0 {
+			t.Errorf("a hold of %s was planned", hold)
+		}
 	}
 
-	// Never shorter than a hold the fan takes for a press of the button.
-	if moves := m.PlanHold(200 * time.Millisecond); moves[0].Hold != 1400*time.Millisecond {
-		t.Errorf("%+v", moves)
+	if len(m.PlanHold(1400*time.Millisecond)) != 1 {
+		t.Error("the minimum hold was refused")
 	}
 }
 
 func TestPlanHold_GoesTheWayTheNextHoldGoesAndAppliesToTheLevel(t *testing.T) {
 	m := New(ramp)
 	m.Delay = 800 * time.Millisecond
+	m.MinHold = 1400 * time.Millisecond
 	m.Alternates = false
 	m.Calibrate(50, true)
 
-	moves := m.PlanHold(6 * time.Second)
+	moves := m.PlanHold(6800 * time.Millisecond)
 
 	if !moves[0].Up {
 		t.Fatal("the next hold goes up")
 	}
 
 	run(m, moves)
-	near(t, m, 90) // 6 s is 60 levels at 100 ms a level: 50 to the top, and 10 back down
+	near(t, m, 90) // 6 s of movement is 60 levels at 100 ms a level: 50 to the top, and 10 back down
 
 	// It turned at the top, so it is now going down.
 	if m.NextUp() {

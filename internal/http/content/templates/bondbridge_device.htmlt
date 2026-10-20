@@ -58,10 +58,10 @@
             {{else}}
             <div class="level">Brightness not known: the bridge can only start and stop the dimmer.</div>
             {{end}}
-            <div class="note">Hold the dimmer for this many seconds of movement{{if .Light.DirectionKnown}}, {{if .Light.NextUp}}brighter{{else}}dimmer{{end}}{{end}}:</div>
+            <div class="note">Hold the dimmer for this many seconds{{if .Light.DirectionKnown}}, {{if .Light.NextUp}}brighter{{else}}dimmer{{end}}{{end}}:</div>
             <div class="buttons">
                 {{range .Light.Holds}}
-                <button type="button" class="cmd hold"{{if $.Light.Busy}} disabled{{end}} data-op="hold" data-value="{{.}}" title="Runs the dimmer for {{.}} s once it has started to move; each second is about 16%">{{.}}s</button>
+                <button type="button" class="cmd hold"{{if $.Light.Busy}} disabled{{end}} data-op="hold" data-value="{{.}}" title="The light starts to move after the first part of the hold, and then goes about 16% a second">{{.}}s</button>
                 {{end}}
             </div>
             {{if .Light.DirectionKnown}}

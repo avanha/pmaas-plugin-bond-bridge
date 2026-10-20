@@ -1121,7 +1121,7 @@ func TestGroups_TheHandlesNameTheirEntitiesAndTheirViewsAreTheDevicesCard(t *tes
 	}
 }
 
-func TestLight_AHoldMovesTheDimmerForTheSecondsAndAfterTheDelayWithoutTheBrightnessBeingKnown(t *testing.T) {
+func TestLight_AHoldHoldsTheDimmerForTheSecondsWithoutTheBrightnessBeingKnown(t *testing.T) {
 	f := newFixture(t, dimmable)
 	f.ready()
 
@@ -1134,7 +1134,7 @@ func TestLight_AHoldMovesTheDimmerForTheSecondsAndAfterTheDelayWithoutTheBrightn
 	}
 
 	f.waitActions(1)
-	f.release(testDelay + 2*time.Second)
+	f.release(2 * time.Second)
 
 	if got := f.waitActions(2); got[1] != "fan1 Stop" {
 		t.Fatalf("%v", got)

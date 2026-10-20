@@ -32,7 +32,7 @@ func renderDevice(t *testing.T, view data.DeviceView) string {
 func livingRoom(known bool) data.DeviceView {
 	light := data.LightView{
 		Light: device.Light{Name: "Living Room Ceiling Fan Light", HasData: true, Dimmable: true},
-		Step:  10, Presets: []int{10, 25, 50, 75, 100}, Holds: []int{1, 2, 3, 4, 5},
+		Step:  10, Presets: []int{10, 25, 50, 75, 100}, Holds: []int{2, 3, 4, 5, 6},
 	}
 
 	if known {
@@ -75,7 +75,7 @@ func TestTemplate_OffersStepsAndLevelsOnceTheDimmerIsCalibrated(t *testing.T) {
 func TestTemplate_HoldButtonsAreOfferedWhetherOrNotTheBrightnessIsKnownAndSayWhichWayTheNextGoesOnceItIs(t *testing.T) {
 	unknown := renderDevice(t, livingRoom(false))
 
-	for _, seconds := range []string{"1", "2", "3", "4", "5"} {
+	for _, seconds := range []string{"2", "3", "4", "5", "6"} {
 		if !strings.Contains(unknown, `data-op="hold" data-value="`+seconds+`"`) {
 			t.Errorf("no hold of %s s in %s", seconds, unknown)
 		}

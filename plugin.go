@@ -424,7 +424,7 @@ func (p *plugin) deviceView(dev *bondDevice) data.DeviceView {
 	if dev.light != nil {
 		view.Light = &data.LightView{Light: dev.light.data, On: dev.light.data.State == device.SwitchStateOn, Busy: dev.light.busy,
 			Step: 10, Presets: []int{10, 25, 50, 75, 100},
-			Holds: []int{1, 2, 3, 4, 5}, DirectionKnown: dev.light.model != nil && dev.light.model.Known(), NextUp: dev.light.model != nil && dev.light.model.NextUp()}
+			Holds: []int{2, 3, 4, 5, 6}, DirectionKnown: dev.light.model != nil && dev.light.model.Known(), NextUp: dev.light.model != nil && dev.light.model.NextUp()}
 
 		if view.Fan == nil {
 			view.OfflineSince = dev.light.data.OfflineSince

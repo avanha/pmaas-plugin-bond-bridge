@@ -16,8 +16,8 @@ import (
 // maxQueued is how many brightness changes are kept waiting while one is being made. More than that are a mistake, or a held key.
 const maxQueued = 5
 
-// maxHoldSeconds is the longest hold a page can ask for: a few sweeps of the dimmer, which is what a mistake would cost.
-const maxHoldSeconds = 10
+// maxHoldSeconds is the longest hold a page can ask for: more than a sweep of the dimmer, which is what a mistake would cost.
+const maxHoldSeconds = 12
 
 // defaultDimDelay is DimDelay when none is given.
 const defaultDimDelay = time.Second
@@ -226,14 +226,19 @@ func (l *light) StepBrightness(percent int) error {
 	return l.request(func() []dimmer.Move { return l.model.PlanStep(percent) })
 }
 
-// Hold runs the dimmer for the time it is moving, which is the way the next hold goes (see dimmer.Model.PlanHold). It does not need
-// the brightness to be known: a person looking at the light judges how far it has gone, and what is estimated of it carries on from there.
-func (l *light) Hold(movement time.Duration) error {
+// Hold runs the dimmer for the time, the way the next hold goes (see dimmer.Model.PlanHold). It does not need the brightness to be known:
+// a person looking at the light judges how far it has gone, and what is estimated of it carries on from there. A hold too short to be
+// one is refused: the fan would switch the light.
+func (l *light) Hold(hold time.Duration) error {
 	if l.model == nil {
 		return fmt.Errorf("unable to dim %q: %w", l.data.Name, device.ErrNotDimmable)
 	}
 
-	return l.request(func() []dimmer.Move { return l.model.PlanHold(movement) })
+	if hold < l.model.MinHold {
+		return fmt.Errorf("a hold of %s would switch %q, not dim it: the shortest is %s", hold, l.data.Name, l.model.MinHold)
+	}
+
+	return l.request(func() []dimmer.Move { return l.model.PlanHold(hold) })
 }
 
 // SetNextUp says which way the next hold of the dimmer goes, when someone has seen the light go the other way. Nothing is sent to the
