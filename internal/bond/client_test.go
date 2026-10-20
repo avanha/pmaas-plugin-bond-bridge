@@ -130,3 +130,21 @@ func TestClient_AFailureSaysWhatTheBridgeAnswered(t *testing.T) {
 		t.Error("an action on a device that isn't there worked")
 	}
 }
+
+func TestMatchDimmers_ChoosesTheDimmerThatSendsTheTogglesSignal(t *testing.T) {
+	commands := []command{
+		{id: "dead", action: "StartDownLightDimmer", data: "1011"},
+		{id: "live", action: "StartDownLightDimmer", data: "1001"},
+		{id: "toggle", action: "ToggleDownLight", data: "1001"},
+		{id: "only", action: "StartUpLightDimmer", data: "0110"}, // a single command is left to Do
+	}
+
+	got := matchDimmers(commands)
+	if len(got) != 1 || got["StartDownLightDimmer"] != "live" {
+		t.Errorf("%v", got)
+	}
+
+	if matchDimmers([]command{{id: "a", action: "StartDownLightDimmer", data: "1"}, {id: "b", action: "StartDownLightDimmer", data: "2"}}) != nil {
+		t.Error("with no toggle to match, nothing should be chosen")
+	}
+}

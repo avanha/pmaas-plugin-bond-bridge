@@ -49,5 +49,9 @@ The brightness shown is an estimate, and drifts with every hold, more with a lag
 hold is reached with a very short hold first, which turns the dimmer round. If a stop is lost the plugin tries again, and if it
 can't, it logs loudly, forgets where the dimmer is, and the light may keep sweeping until stopped from the remote.
 
+**Two commands for one dimmer.** Some fans, on firmware v4.39, have two recorded commands for each dimmer action ("Bottom Dimmer"
+twice). The action runs the first, and the fan may ignore it. The plugin finds the command that sends the same signal as the
+light's toggle (what the remote sends when the button is held) and transmits that one by its id.
+
 Not done: UDP push from the bridge (instant updates from other apps), the bridge's scenes and schedules, and remembering the
 dimmer's position across restarts (it has to be calibrated again).

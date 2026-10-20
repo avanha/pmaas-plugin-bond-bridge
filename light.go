@@ -295,7 +295,7 @@ func (l *light) run(moves []dimmer.Move, index int) {
 	move := moves[index]
 
 	accepted := p.exec.submit(func(ctx context.Context) {
-		err := p.api.Do(ctx, l.dev.info.ID, l.acts.dim, nil)
+		err := l.startDimmer(ctx)
 		startedAt := p.now()
 
 		p.later(func() {
@@ -314,6 +314,17 @@ func (l *light) run(moves []dimmer.Move, index int) {
 	if !accepted {
 		l.fail("unable to dim", errors.New("the bridge's queue is full or the plugin is stopping"))
 	}
+}
+
+// startDimmer starts the dimmer, with the command the device obeys if the bridge has two for the action.
+func (l *light) startDimmer(ctx context.Context) error {
+	p := l.dev.p
+
+	if command, ok := l.dev.info.Commands[l.acts.dim]; ok {
+		return p.api.Transmit(ctx, l.dev.info.ID, command)
+	}
+
+	return p.api.Do(ctx, l.dev.info.ID, l.acts.dim, nil)
 }
 
 // stopAndGo stops the dimmer and carries on with the next hold. Runs on the executor.

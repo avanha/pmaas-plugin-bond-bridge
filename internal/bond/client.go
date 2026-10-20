@@ -28,6 +28,10 @@ type API interface {
 	// Correct changes what the bridge believes the state of a device is, by state variable ("light": 0), without the bridge
 	// transmitting anything. It is for when the belief is wrong: the bridge only knows what it has sent.
 	Correct(ctx context.Context, id string, state map[string]int) error
+
+	// Transmit sends one of the device's recorded commands by its id, which Do can't: when a device has two commands for an action,
+	// Do uses the first, and it is not always the one the device obeys.
+	Transmit(ctx context.Context, id string, command string) error
 }
 
 // Device is a thing the bridge controls.
@@ -42,6 +46,10 @@ type Device struct {
 
 	// MaxSpeed is the number of speeds of a fan, or 0.
 	MaxSpeed int
+
+	// Commands are the ids of the commands to send, by action, where Do's choice of command for the action isn't the one the
+	// device obeys. See pickCommands.
+	Commands map[string]string
 }
 
 // Has is whether the device can do the action.
@@ -169,8 +177,12 @@ func (c *Client) Devices(ctx context.Context) ([]Device, error) {
 			return nil, fmt.Errorf("unable to read the properties of device %s: %w", id, err)
 		}
 
+		// Best effort: without the commands the actions are used as they are.
+		commands, _ := c.pickCommands(ctx, id)
+
 		devices = append(devices, Device{
 			ID: id, Name: info.Name, Type: info.Type, Location: info.Location, Actions: info.Actions, MaxSpeed: properties.MaxSpeed,
+			Commands: commands,
 		})
 	}
 
@@ -206,4 +218,120 @@ func (c *Client) Do(ctx context.Context, id string, action string, argument *int
 	}
 
 	return c.do(ctx, http.MethodPut, "/v2/devices/"+url.PathEscape(id)+"/actions/"+url.PathEscape(action), body, nil)
+}
+
+func (c *Client) Transmit(ctx context.Context, id string, command string) error {
+	return c.do(ctx, http.MethodPut, "/v2/devices/"+url.PathEscape(id)+"/commands/"+url.PathEscape(command)+"/tx", map[string]any{}, nil)
+}
+
+// command is one of a device's recorded commands.
+type command struct {
+	id     string
+	action string
+	data   string // what it transmits
+}
+
+// dimmerLights is the command that toggles a light, for each action that dims it. The dimmer is the same signal held down.
+var dimmerLights = map[string]string{
+	"StartDownLightDimmer": "ToggleDownLight",
+	"StartUpLightDimmer":   "ToggleUpLight",
+	"StartDimmer":          "ToggleLight",
+}
+
+// pickCommands finds, for each dimmer action the device has more than one command for, the one that is the toggle of the light
+// held down. A fan with the Bond firmware seen (v4.39) has two "Bottom Dimmer" commands for StartDownLightDimmer. Do uses the first,
+// and the fan ignores it. The other sends the toggle's signal for longer, which is what the remote does when it is held. An action
+// that has a single command, or none that matches, is left to Do.
+func (c *Client) pickCommands(ctx context.Context, id string) (map[string]string, error) {
+	escaped := url.PathEscape(id)
+
+	var listed map[string]json.RawMessage
+
+	if err := c.do(ctx, http.MethodGet, "/v2/devices/"+escaped+"/commands", nil, &listed); err != nil {
+		return nil, err
+	}
+
+	var commands []command
+
+	for commandID := range listed {
+		if strings.HasPrefix(commandID, "_") {
+			continue
+		}
+
+		var info struct {
+			Action string `json:"action"`
+		}
+
+		path := "/v2/devices/" + escaped + "/commands/" + url.PathEscape(commandID)
+
+		if err := c.do(ctx, http.MethodGet, path, nil, &info); err != nil {
+			return nil, err
+		}
+
+		// Only the commands that matter are read further.
+		if _, ok := dimmerLights[info.Action]; !ok && !isToggle(info.Action) {
+			continue
+		}
+
+		var signal struct {
+			Data string `json:"data"`
+		}
+
+		if err := c.do(ctx, http.MethodGet, path+"/signal", nil, &signal); err != nil {
+			return nil, err
+		}
+
+		commands = append(commands, command{id: commandID, action: info.Action, data: signal.Data})
+	}
+
+	return matchDimmers(commands), nil
+}
+
+func isToggle(action string) bool {
+	for _, toggle := range dimmerLights {
+		if toggle == action {
+			return true
+		}
+	}
+
+	return false
+}
+
+// matchDimmers is the command id for each dimmer action that has several commands, and one of them sends the signal of the
+// light's toggle.
+func matchDimmers(commands []command) map[string]string {
+	picked := map[string]string{}
+
+	for dimmer, toggle := range dimmerLights {
+		var candidates []command
+
+		var toggleData string
+
+		for _, c := range commands {
+			switch c.action {
+			case dimmer:
+				candidates = append(candidates, c)
+			case toggle:
+				toggleData = c.data
+			}
+		}
+
+		if len(candidates) < 2 || toggleData == "" {
+			continue
+		}
+
+		for _, candidate := range candidates {
+			if candidate.data == toggleData {
+				picked[dimmer] = candidate.id
+
+				break
+			}
+		}
+	}
+
+	if len(picked) == 0 {
+		return nil
+	}
+
+	return picked
 }

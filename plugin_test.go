@@ -27,6 +27,9 @@ type fakeBridge struct {
 	state   map[string]bond.State
 	down    bool // the bridge doesn't answer
 	failDo  map[string]bool
+
+	// commands are the ids to transmit by action for fan2, as the client works them out.
+	commands map[string]string
 }
 
 func ptr(i int) *int { return &i }
@@ -61,8 +64,21 @@ func (b *fakeBridge) Devices(context.Context) ([]bond.Device, error) {
 
 	return []bond.Device{
 		{ID: "fan1", Name: "Living Room Ceiling Fan", Type: "CF", Location: "Living Room", Actions: fanActions, MaxSpeed: 3},
-		{ID: "fan2", Name: "Bedroom Ceiling Fan", Type: "CF", Location: "Master Bedroom", Actions: fanActions, MaxSpeed: 3},
+		{ID: "fan2", Name: "Bedroom Ceiling Fan", Type: "CF", Location: "Master Bedroom", Actions: fanActions, MaxSpeed: 3, Commands: b.commands},
 	}, nil
+}
+
+func (b *fakeBridge) Transmit(_ context.Context, id string, command string) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if b.down {
+		return errors.New("the bridge answered 500")
+	}
+
+	b.actions = append(b.actions, id+" transmit "+command)
+
+	return nil
 }
 
 func (b *fakeBridge) State(_ context.Context, id string) (bond.State, error) {
@@ -970,5 +986,28 @@ func TestCommand_FromThePageDoesWhatItSays(t *testing.T) {
 		if err == nil {
 			t.Errorf("%+v was accepted", bad)
 		}
+	}
+}
+
+func TestLight_TheDimmerIsStartedWithTheCommandTheDeviceObeysIfTheBridgeHasTwo(t *testing.T) {
+	var handle *LightHandle
+
+	bridge := newFakeBridge()
+	bridge.commands = map[string]string{"StartDownLightDimmer": "5484616f"}
+
+	f := newFixtureWith(t, bridge, func(c *PluginConfig) {
+		c.Options("fan2", DeviceOptions{DimRamp: testRamp})
+		handle = c.Light("fan2")
+	})
+	f.ready()
+	f.calibrate("fan2", 1)
+
+	if err := handle.SetBrightness(50); err != nil {
+		t.Fatal(err)
+	}
+
+	got := f.waitActions(2)
+	if got[0] != "fan2 TurnDownLightOn" || got[1] != "fan2 transmit 5484616f" {
+		t.Errorf("%v", got)
 	}
 }
