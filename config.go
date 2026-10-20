@@ -7,6 +7,7 @@ import (
 	"github.com/avanha/pmaas-plugin-bond-bridge/internal/bond"
 	spicommon "github.com/avanha/pmaas-spi/common"
 	"github.com/avanha/pmaas-spi/device"
+	"github.com/avanha/pmaas-spi/entity"
 )
 
 // LightChoice is which of a device's lights is the one to control. A ceiling fan may have an up light and a down light, with
@@ -129,6 +130,13 @@ type FanHandle struct {
 
 var _ device.IFan = (*FanHandle)(nil)
 
+// FanHandle is an entity.Ref, so that the assembly can put the fan in a group.
+var _ entity.Ref = (*FanHandle)(nil)
+
+func (h *FanHandle) EntityId() (string, bool) {
+	return h.stub.EntityId()
+}
+
 func (h *FanHandle) get() (device.IFan, error) {
 	stub, err := h.stub.Stub()
 	if err != nil {
@@ -190,6 +198,13 @@ type LightHandle struct {
 }
 
 var _ device.ILight = (*LightHandle)(nil)
+
+// LightHandle is an entity.Ref, so that the assembly can put the light in a group.
+var _ entity.Ref = (*LightHandle)(nil)
+
+func (h *LightHandle) EntityId() (string, bool) {
+	return h.stub.EntityId()
+}
 
 func (h *LightHandle) get() (device.ILight, error) {
 	stub, err := h.stub.Stub()

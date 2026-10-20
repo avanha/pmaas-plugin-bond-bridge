@@ -44,6 +44,7 @@ func (f *fan) register() {
 	}
 
 	f.id = id
+	p.registerView(f.dev, id)
 
 	if handle := p.handleForFan(f.dev.info); handle != nil {
 		event := spicommon.StubAvailableEvent[device.IFan]{EntityEvent: f.entityEvent(), EntityStub: f.stub}

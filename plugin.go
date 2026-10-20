@@ -398,33 +398,49 @@ func (p *plugin) getDevices() []data.DeviceView {
 	views := make([]data.DeviceView, 0, len(p.devices))
 
 	for _, dev := range p.devices {
-		view := data.DeviceView{ID: dev.info.ID, Name: dev.info.Name, Location: dev.info.Location, Offline: dev.heard && !dev.reachable}
-
-		if dev.fan != nil {
-			speeds := make([]int, dev.fan.data.MaxSpeed)
-			for i := range speeds {
-				speeds[i] = i + 1
-			}
-
-			view.Fan = &data.FanView{Fan: dev.fan.data, Speeds: speeds, On: dev.fan.data.State == device.SwitchStateOn}
-			view.OfflineSince = dev.fan.data.OfflineSince
-		}
-
-		if dev.light != nil {
-			view.Light = &data.LightView{Light: dev.light.data, On: dev.light.data.State == device.SwitchStateOn, Busy: dev.light.busy,
-				Step: 10, Presets: []int{10, 25, 50, 75, 100}}
-
-			if view.Fan == nil {
-				view.OfflineSince = dev.light.data.OfflineSince
-			}
-		}
-
-		views = append(views, view)
+		views = append(views, p.deviceView(dev))
 	}
 
 	sort.Slice(views, func(i, j int) bool { return views[i].Name < views[j].Name })
 
 	return views
+}
+
+// deviceView is a device as the page shows it: its card, with its fan and its light. Runs on the plugin goroutine.
+func (p *plugin) deviceView(dev *bondDevice) data.DeviceView {
+	view := data.DeviceView{ID: dev.info.ID, Name: dev.info.Name, Location: dev.info.Location, Offline: dev.heard && !dev.reachable}
+
+	if dev.fan != nil {
+		speeds := make([]int, dev.fan.data.MaxSpeed)
+		for i := range speeds {
+			speeds[i] = i + 1
+		}
+
+		view.Fan = &data.FanView{Fan: dev.fan.data, Speeds: speeds, On: dev.fan.data.State == device.SwitchStateOn}
+		view.OfflineSince = dev.fan.data.OfflineSince
+	}
+
+	if dev.light != nil {
+		view.Light = &data.LightView{Light: dev.light.data, On: dev.light.data.State == device.SwitchStateOn, Busy: dev.light.busy,
+			Step: 10, Presets: []int{10, 25, 50, 75, 100}}
+
+		if view.Fan == nil {
+			view.OfflineSince = dev.light.data.OfflineSince
+		}
+	}
+
+	return view
+}
+
+// registerView gives an entity of the device the view of its card, for pages that list entities of different plugins. The fan and the
+// light of a device are one card, so they share a key and a page that holds both draws it once.
+func (p *plugin) registerView(dev *bondDevice, entityId string) {
+	err := p.container.RegisterEntityView(entityId, func() (spi.EntityView, error) {
+		return spi.EntityView{Key: "bond/" + dev.info.ID, Value: p.deviceView(dev)}, nil
+	})
+	if err != nil {
+		p.log.Error("unable to register the view of an entity", "device", dev.info.Name, "error", err)
+	}
 }
 
 // command does what a button on the page asked. Runs on the plugin goroutine.

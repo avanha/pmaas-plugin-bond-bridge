@@ -184,6 +184,7 @@ type fakeContainer struct {
 	ids        []string
 	broadcasts []any
 	removed    []string
+	views      map[string]spi.EntityViewFunc
 }
 
 func newFakeContainer() *fakeContainer {
@@ -218,6 +219,19 @@ func (c *fakeContainer) RegisterEntity(uniqueData string, entityType reflect.Typ
 	c.entities[uniqueData] = entityType
 
 	return id, nil
+}
+
+func (c *fakeContainer) RegisterEntityView(id string, view spi.EntityViewFunc) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.views == nil {
+		c.views = map[string]spi.EntityViewFunc{}
+	}
+
+	c.views[id] = view
+
+	return nil
 }
 
 func (c *fakeContainer) DeregisterEntity(id string) error {
@@ -1052,4 +1066,57 @@ func TestLight_TheDimmerRestsAfterAHoldAndAPageCommandMeanwhileIsRefused(t *test
 	f.advance(2 * time.Second)
 	f.fire()
 	f.eventually("the rest to end", func() bool { return !f.plugin.byID["fan1"].light.busy })
+}
+
+func TestGroups_TheHandlesNameTheirEntitiesAndTheirViewsAreTheDevicesCard(t *testing.T) {
+	var fan *FanHandle
+
+	var light *LightHandle
+
+	f := newFixture(t, func(c *PluginConfig) {
+		fan, light = c.Fan("fan2"), c.Light("fan2")
+	})
+
+	if _, ok := fan.EntityId(); ok {
+		t.Error("the fan has an id before it is registered")
+	}
+
+	f.ready()
+
+	fanId, fanOk := fan.EntityId()
+	lightId, lightOk := light.EntityId()
+
+	if !fanOk || !lightOk || fanId == lightId {
+		t.Fatalf("%q %v %q %v", fanId, fanOk, lightId, lightOk)
+	}
+
+	// Both entities are the device's one card: the same key, and the view is the card's data.
+	var fanView, lightView spi.EntityView
+
+	f.onPlugin(func() {
+		var err error
+
+		if fanView, err = f.container.views[fanId](); err != nil {
+			t.Error(err)
+		}
+
+		if lightView, err = f.container.views[lightId](); err != nil {
+			t.Error(err)
+		}
+	})
+
+	if fanView.Key != "bond/fan2" || fanView.Key != lightView.Key {
+		t.Errorf("%q %q", fanView.Key, lightView.Key)
+	}
+
+	card, ok := fanView.Value.(data.DeviceView)
+	if !ok || card.Name != "Bedroom Ceiling Fan" || card.Fan == nil || card.Light == nil {
+		t.Errorf("%#v", fanView.Value)
+	}
+
+	f.onPlugin(func() { f.plugin.Stop() })
+
+	if _, ok := fan.EntityId(); ok {
+		t.Error("the fan still has an id after the plugin stopped")
+	}
 }

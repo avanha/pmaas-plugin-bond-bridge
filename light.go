@@ -134,6 +134,7 @@ func (l *light) register() {
 	}
 
 	l.id = id
+	p.registerView(l.dev, id)
 
 	if handle := p.handleForLight(l.dev.info); handle != nil {
 		event := spicommon.StubAvailableEvent[device.ILight]{EntityEvent: l.entityEvent(), EntityStub: l.stub}
