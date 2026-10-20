@@ -58,6 +58,17 @@
             {{else}}
             <div class="level">Brightness not known: the bridge can only start and stop the dimmer.</div>
             {{end}}
+            <div class="note">Hold the dimmer for this many seconds of movement{{if .Light.DirectionKnown}}, {{if .Light.NextUp}}brighter{{else}}dimmer{{end}}{{end}}:</div>
+            <div class="buttons">
+                {{range .Light.Holds}}
+                <button type="button" class="cmd hold"{{if $.Light.Busy}} disabled{{end}} data-op="hold" data-value="{{.}}" title="Runs the dimmer for {{.}} s once it has started to move; each second is about 16%">{{.}}s</button>
+                {{end}}
+            </div>
+            {{if .Light.DirectionKnown}}
+            <div class="note">The next hold is expected to go {{if .Light.NextUp}}brighter{{else}}dimmer{{end}}. If you see it go the other way:
+                <button type="button" class="cmd"{{if .Light.Busy}} disabled{{end}} data-op="direction" data-value="{{if .Light.NextUp}}0{{else}}1{{end}}">The next hold goes {{if .Light.NextUp}}dimmer{{else}}brighter{{end}}</button>
+            </div>
+            {{end}}
             <div class="note">Calibrate when the light is at an end, with the remote or the app:</div>
             <div class="buttons">
                 <button type="button" class="cmd"{{if .Light.Busy}} disabled{{end}} data-op="calibrate" data-value="1">It's at its dimmest</button>

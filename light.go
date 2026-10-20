@@ -16,6 +16,9 @@ import (
 // maxQueued is how many brightness changes are kept waiting while one is being made. More than that are a mistake, or a held key.
 const maxQueued = 5
 
+// maxHoldSeconds is the longest hold a page can ask for: a few sweeps of the dimmer, which is what a mistake would cost.
+const maxHoldSeconds = 10
+
 // defaultDimDelay is DimDelay when none is given.
 const defaultDimDelay = time.Second
 
@@ -221,6 +224,33 @@ func (l *light) StepBrightness(percent int) error {
 	}
 
 	return l.request(func() []dimmer.Move { return l.model.PlanStep(percent) })
+}
+
+// Hold runs the dimmer for the time it is moving, which is the way the next hold goes (see dimmer.Model.PlanHold). It does not need
+// the brightness to be known: a person looking at the light judges how far it has gone, and what is estimated of it carries on from there.
+func (l *light) Hold(movement time.Duration) error {
+	if l.model == nil {
+		return fmt.Errorf("unable to dim %q: %w", l.data.Name, device.ErrNotDimmable)
+	}
+
+	return l.request(func() []dimmer.Move { return l.model.PlanHold(movement) })
+}
+
+// SetNextUp says which way the next hold of the dimmer goes, when someone has seen the light go the other way. Nothing is sent to the
+// light. The estimate of the brightness is as it was, and the direction is not known until it is.
+func (l *light) SetNextUp(up bool) error {
+	if l.model == nil {
+		return fmt.Errorf("unable to change the direction of %q: %w", l.data.Name, device.ErrNotDimmable)
+	}
+
+	if l.busy {
+		return errors.New("the dimmer is being run: wait for it to finish")
+	}
+
+	l.model.SetNextUp(up)
+	l.broadcastState()
+
+	return nil
 }
 
 // Sync tells the bridge the light is really on or off, when what it believes is wrong. Nothing is transmitted to the light. A fan

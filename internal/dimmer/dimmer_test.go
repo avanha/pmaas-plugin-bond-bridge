@@ -214,3 +214,52 @@ func TestModel_ASmallChangeIsRoundedToNothingOrToTheShortestHold(t *testing.T) {
 		}
 	}
 }
+
+func TestPlanHold_IsTheTimeItMovesAndTheDelayBeforeItDoesWhereverTheLevelIs(t *testing.T) {
+	m := New(ramp)
+	m.Delay = 800 * time.Millisecond
+	m.MinHold = 1400 * time.Millisecond
+
+	// No level is known, and it still plans: a person judges how far it went.
+	moves := m.PlanHold(2 * time.Second)
+
+	if len(moves) != 1 || moves[0].Hold != 2800*time.Millisecond {
+		t.Fatalf("%+v", moves)
+	}
+
+	if len(m.PlanHold(0)) != 0 {
+		t.Error("a hold for no time")
+	}
+
+	// Never shorter than a hold the fan takes for a press of the button.
+	if moves := m.PlanHold(200 * time.Millisecond); moves[0].Hold != 1400*time.Millisecond {
+		t.Errorf("%+v", moves)
+	}
+}
+
+func TestPlanHold_GoesTheWayTheNextHoldGoesAndAppliesToTheLevel(t *testing.T) {
+	m := New(ramp)
+	m.Delay = 800 * time.Millisecond
+	m.Alternates = false
+	m.Calibrate(50, true)
+
+	moves := m.PlanHold(6 * time.Second)
+
+	if !moves[0].Up {
+		t.Fatal("the next hold goes up")
+	}
+
+	run(m, moves)
+	near(t, m, 90) // 6 s is 60 levels at 100 ms a level: 50 to the top, and 10 back down
+
+	// It turned at the top, so it is now going down.
+	if m.NextUp() {
+		t.Error("should be going down")
+	}
+
+	m.SetNextUp(true)
+
+	if !m.NextUp() || m.Level() != 90 {
+		t.Errorf("direction %v level %d", m.NextUp(), m.Level())
+	}
+}

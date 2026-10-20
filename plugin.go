@@ -423,7 +423,8 @@ func (p *plugin) deviceView(dev *bondDevice) data.DeviceView {
 
 	if dev.light != nil {
 		view.Light = &data.LightView{Light: dev.light.data, On: dev.light.data.State == device.SwitchStateOn, Busy: dev.light.busy,
-			Step: 10, Presets: []int{10, 25, 50, 75, 100}}
+			Step: 10, Presets: []int{10, 25, 50, 75, 100},
+			Holds: []int{1, 2, 3, 4, 5}, DirectionKnown: dev.light.model != nil && dev.light.model.Known(), NextUp: dev.light.model != nil && dev.light.model.NextUp()}
 
 		if view.Fan == nil {
 			view.OfflineSince = dev.light.data.OfflineSince
@@ -506,6 +507,14 @@ func (p *plugin) command(request common.Command) error {
 			return dev.light.Sync(request.Value != 0)
 		case "calibrate":
 			return dev.light.Calibrate(request.Value)
+		case "hold":
+			if request.Value < 1 || request.Value > maxHoldSeconds {
+				return fmt.Errorf("a hold of %d seconds is not between 1 and %d", request.Value, maxHoldSeconds)
+			}
+
+			return dev.light.Hold(time.Duration(request.Value) * time.Second)
+		case "direction":
+			return dev.light.SetNextUp(request.Value > 0)
 		}
 	}
 

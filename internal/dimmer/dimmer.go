@@ -137,6 +137,22 @@ func (m *Model) PlanStep(delta int) []Move {
 	return m.Plan(m.Level() + delta)
 }
 
+// PlanHold is the hold that moves the dimmer for the time, which is the time it is moving: the hold is that and the delay before it
+// starts to. A hold is never shorter than MinHold, which the fan would take for a press of the button. The direction is whichever way the
+// next hold goes (see NextUp), so it works where the level is not known. There is none for no time.
+func (m *Model) PlanHold(movement time.Duration) []Move {
+	if movement <= 0 {
+		return nil
+	}
+
+	return []Move{{Hold: max(m.Delay+movement, m.MinHold), Up: m.up}}
+}
+
+// SetNextUp says which way the next hold goes, when someone has seen that it is not the way expected. The level is as it was.
+func (m *Model) SetNextUp(up bool) {
+	m.up = up
+}
+
 // Apply updates the estimate for a hold that has been made, and for how long it was in fact held.
 func (m *Model) Apply(held time.Duration) {
 	if !m.known {

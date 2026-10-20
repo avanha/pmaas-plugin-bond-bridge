@@ -1120,3 +1120,60 @@ func TestGroups_TheHandlesNameTheirEntitiesAndTheirViewsAreTheDevicesCard(t *tes
 		t.Error("the fan still has an id after the plugin stopped")
 	}
 }
+
+func TestLight_AHoldMovesTheDimmerForTheSecondsAndAfterTheDelayWithoutTheBrightnessBeingKnown(t *testing.T) {
+	f := newFixture(t, dimmable)
+	f.ready()
+
+	var err error
+
+	f.onPlugin(func() { err = f.plugin.command(common.Command{Device: "fan1", Target: "light", Op: "hold", Value: 2}) })
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.waitActions(1)
+	f.release(testDelay + 2*time.Second)
+
+	if got := f.waitActions(2); got[1] != "fan1 Stop" {
+		t.Fatalf("%v", got)
+	}
+
+	f.eventually("the dimmer to be free", func() bool { return !f.plugin.byID["fan1"].light.busy })
+}
+
+func TestLight_AHoldOutOfRangeIsRefusedAndTheDirectionIsOnlyChangedOnceItIsKnownToBeIdle(t *testing.T) {
+	f := newFixture(t, dimmable)
+	f.ready()
+
+	for _, seconds := range []int{0, maxHoldSeconds + 1} {
+		var err error
+
+		f.onPlugin(func() {
+			err = f.plugin.command(common.Command{Device: "fan1", Target: "light", Op: "hold", Value: seconds})
+		})
+
+		if err == nil {
+			t.Errorf("a hold of %d s was accepted", seconds)
+		}
+	}
+
+	f.calibrate("fan1", 1)
+
+	var err error
+
+	f.onPlugin(func() {
+		err = f.plugin.command(common.Command{Device: "fan1", Target: "light", Op: "direction", Value: 0})
+	})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.onPlugin(func() {
+		if f.plugin.byID["fan1"].light.model.NextUp() {
+			t.Error("the next hold should go down")
+		}
+	})
+}

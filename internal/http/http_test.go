@@ -32,7 +32,7 @@ func renderDevice(t *testing.T, view data.DeviceView) string {
 func livingRoom(known bool) data.DeviceView {
 	light := data.LightView{
 		Light: device.Light{Name: "Living Room Ceiling Fan Light", HasData: true, Dimmable: true},
-		Step:  10, Presets: []int{10, 25, 50, 75, 100},
+		Step:  10, Presets: []int{10, 25, 50, 75, 100}, Holds: []int{1, 2, 3, 4, 5},
 	}
 
 	if known {
@@ -69,6 +69,28 @@ func TestTemplate_OffersStepsAndLevelsOnceTheDimmerIsCalibrated(t *testing.T) {
 	if !strings.Contains(page, "About 1%") || !strings.Contains(page, `data-op="step" data-value="10"`) ||
 		!strings.Contains(page, `data-op="brightness" data-value="50"`) {
 		t.Errorf("%s", page)
+	}
+}
+
+func TestTemplate_HoldButtonsAreOfferedWhetherOrNotTheBrightnessIsKnownAndSayWhichWayTheNextGoesOnceItIs(t *testing.T) {
+	unknown := renderDevice(t, livingRoom(false))
+
+	for _, seconds := range []string{"1", "2", "3", "4", "5"} {
+		if !strings.Contains(unknown, `data-op="hold" data-value="`+seconds+`"`) {
+			t.Errorf("no hold of %s s in %s", seconds, unknown)
+		}
+	}
+
+	if strings.Contains(unknown, "The next hold goes") {
+		t.Error("a direction is offered before the dimmer was calibrated")
+	}
+
+	view := livingRoom(true)
+	view.Light.DirectionKnown, view.Light.NextUp = true, true
+	known := renderDevice(t, view)
+
+	if !strings.Contains(known, "expected to go brighter") || !strings.Contains(known, `data-op="direction" data-value="0"`) {
+		t.Errorf("%s", known)
 	}
 }
 
