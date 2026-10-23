@@ -63,6 +63,11 @@ They work whether or not the brightness is known, which is the way to move it by
 way the last went (with `DimKeepsDirection`) and turns round at an end, so the page says which way the next is expected to go, and has a
 button to correct that if you see otherwise (nothing is sent to the light).
 
+**Old browsers.** The page is used on an iPad that stopped at iOS 9 (Safari 9), so `bondbridge.js` is plain ES5 with `XMLHttpRequest` (a script that
+uses an arrow function, a class field or `fetch` doesn't run there at all, and the buttons can't be clicked), and the stylesheet spaces the flex
+containers' items with margins, not `gap`, which needs Safari 14.1. Tests in `internal/http` (`oldbrowsers_test.go`, `js_test/`) look for what
+it doesn't have.
+
 **Two commands for one dimmer.** Some fans, on firmware v4.39, have two recorded commands for each dimmer action ("Bottom Dimmer"
 twice). The action runs the first, and the fan may ignore it. The plugin finds the command that sends the same signal as the
 light's toggle (what the remote sends when the button is held) and transmits that one by its id.
