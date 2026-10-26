@@ -21,5 +21,7 @@
 .entity-bond-device > * + * { margin-top: 6px; }
 .entity-bond-device .title-row > * + * { margin-left: 8px; }
 .entity-bond-device .part > * + * { margin-top: 4px; }
-.entity-bond-device .part-title > * + * { margin-left: 8px; }
+/* The title is "Fan" or "Light" as plain text and then the state in a span, so the space is on every element of it: `> * + *` skips the text, which
+   is an item of the flex container for `gap` (what this was) but not for the selector, and so left no space between "Fan" and "Off". */
+.entity-bond-device .part-title > * { margin-left: 8px; }
 .entity-bond-device .buttons > * { margin: 0 4px 4px 0; }

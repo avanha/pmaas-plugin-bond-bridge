@@ -82,3 +82,13 @@ func TestStylesheets_UseTheColourSyntaxWithCommas(t *testing.T) {
 		}
 	}
 }
+
+// The title of a part is text and then a span: a margin on `> * + *` goes between elements and so would put none between the text and the span,
+// which is what gap did (and the old Safari has no gap, so the margin replaced it).
+func TestStylesheets_ThePartTitleSpacesTheStateFromItsTextAndNotOnlyFromAnElementBeforeIt(t *testing.T) {
+	css := stylesheets(t)["content/static/css/bondbridge.css"]
+
+	if !strings.Contains(css, ".entity-bond-device .part-title > * {") || strings.Contains(css, ".part-title > * + *") {
+		t.Errorf("the part title's spacing is not on each of its elements:\n%s", css)
+	}
+}
